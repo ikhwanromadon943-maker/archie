@@ -5,14 +5,6 @@ import Base from '../../layouts/Base.astro';
 
   <div class="music-hero">
     <h1 class="music-big-title">ARCHIE<span class="music-dot">.</span>MUSIC</h1>
-    <!-- Decorative note icons -->
-    <div class="music-deco-notes" aria-hidden="true">
-      <span class="dn dn1">&#9834;</span>
-      <span class="dn dn2">&#9835;</span>
-      <span class="dn dn3">&#9833;</span>
-      <span class="dn dn4">&#9834;</span>
-      <span class="dn dn5">&#9835;</span>
-    </div>
     <div class="music-search-row">
       <div class="music-search-wrap">
         <div class="music-search-icon">
@@ -20,7 +12,7 @@ import Base from '../../layouts/Base.astro';
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </div>
-        <input type="text" id="music-search" class="music-search-input" placeholder="Search song or artist…"/>
+        <input type="text" id="music-search" class="music-search-input" placeholder="Search song..."/>
       </div>
       <button id="music-search-btn" class="music-search-btn">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -30,19 +22,25 @@ import Base from '../../layouts/Base.astro';
     </div>
   </div>
 
-  <!-- Glass panel wrapping list -->
-  <div class="music-glass-wrap">
-    <div class="loading-state" id="loading"><span class="loader"></span></div>
-    <div id="music-list"></div>
-    <div class="empty-state" id="empty-state" style="display:none">
-      <div class="empty-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-        </svg>
-      </div>
-      <h3 class="music-empty-label">START BY SEARCHING A SONG</h3>
-      <p>Or add tracks via the admin panel.</p>
+  <!-- Dekorasi ringan -->
+  <div class="music-deco-row">
+    <span class="music-deco-tag">♩ now playing</span>
+    <span class="music-deco-dot"></span>
+    <span class="music-deco-tag">♪ all tracks</span>
+    <span class="music-deco-dot"></span>
+    <span class="music-deco-tag">♫ saved</span>
+  </div>
+
+  <div class="loading-state" id="loading"><span class="loader"></span></div>
+  <div id="music-list"></div>
+  <div class="empty-state" id="empty-state" style="display:none">
+    <div class="empty-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
     </div>
+    <h3 class="music-empty-label">START BY SEARCHING A SONG</h3>
+    <p>Or add tracks via the admin panel.</p>
   </div>
 
 </Base>
@@ -109,39 +107,22 @@ import Base from '../../layouts/Base.astro';
 </script>
 
 <style>
-  .music-hero { text-align:center; padding:2rem 0 2.5rem; }
+  .music-hero { text-align:center; padding:2rem 0 1.5rem; }
 
   .music-big-title {
     font-family:'Inter',system-ui,sans-serif;
     font-size:clamp(2rem,9vw,3.5rem);
     font-weight:700; letter-spacing:-0.02em;
-    color:#1e293b; margin-bottom:1rem; line-height:1;
+    color:#1e293b; margin-bottom:2rem; line-height:1;
   }
   .music-dot { color:#6495ED; }
-
-  /* Decorative floating notes */
-  .music-deco-notes {
-    display:flex; justify-content:center; gap:1.5rem;
-    margin-bottom:1.5rem; user-select:none;
-  }
-  .dn {
-    font-size:1.1rem; color:#6495ED; opacity:0.35;
-    animation:noteBob 3s ease-in-out infinite;
-  }
-  .dn1 { animation-delay:0s; }
-  .dn2 { animation-delay:0.4s; }
-  .dn3 { animation-delay:0.8s; }
-  .dn4 { animation-delay:1.2s; }
-  .dn5 { animation-delay:1.6s; }
-  @keyframes noteBob {
-    0%,100% { transform:translateY(0); opacity:0.3; }
-    50%      { transform:translateY(-5px); opacity:0.6; }
-  }
 
   .music-search-row {
     display:flex; gap:0.5rem; max-width:400px; margin:0 auto;
   }
-  .music-search-wrap { flex:1; position:relative; }
+  .music-search-wrap {
+    flex:1; position:relative;
+  }
   .music-search-icon {
     position:absolute; left:0.9rem; top:50%; transform:translateY(-50%);
     color:#94a3b8; pointer-events:none; display:flex;
@@ -150,7 +131,7 @@ import Base from '../../layouts/Base.astro';
     width:100%;
     background:rgba(255,255,255,0.7);
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    border:1.5px solid rgba(255,255,255,0.9);
+    border:1.5px solid rgba(255,255,255,0.85);
     border-radius:999px;
     padding:0.7rem 1rem 0.7rem 2.5rem;
     font-size:0.875rem; color:#1e293b;
@@ -161,7 +142,6 @@ import Base from '../../layouts/Base.astro';
   .music-search-input:focus {
     border-color:#6495ED;
     box-shadow:0 0 0 3px rgba(100,149,237,0.12);
-    background:rgba(255,255,255,0.9);
   }
   .music-search-btn {
     width:42px; height:42px; border-radius:50%;
@@ -172,27 +152,32 @@ import Base from '../../layouts/Base.astro';
     box-shadow:0 4px 12px rgba(100,149,237,0.3);
   }
   .music-search-btn:hover { background:#5b89dc; transform:scale(1.05); }
-  .music-search-btn:active { transform:scale(0.95); }
 
-  /* Glass panel wrapping the list */
-  .music-glass-wrap {
-    background:rgba(255,255,255,0.52);
-    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-    border:1px solid rgba(255,255,255,0.8);
-    border-radius:20px;
-    padding:0.5rem 1rem;
-    box-shadow:0 4px 24px rgba(100,149,237,0.07);
-    margin-bottom:2rem;
-    min-height:80px;
+  /* Deco row */
+  .music-deco-row {
+    display:flex; align-items:center; justify-content:center;
+    gap:0.6rem; margin:1rem 0 1.5rem;
+  }
+  .music-deco-tag {
+    font-size:0.6rem; font-family:monospace;
+    color:#94a3b8; letter-spacing:0.1em;
+    background:rgba(255,255,255,0.55);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.7);
+    padding:0.18rem 0.55rem; border-radius:999px;
+  }
+  .music-deco-dot {
+    width:3px; height:3px; border-radius:50%;
+    background:#cbd5e1;
   }
 
   .music-card {
     display:flex; align-items:center; gap:0.85rem;
-    padding:0.85rem 0.5rem; border-bottom:1px solid rgba(226,232,240,0.5);
-    transition:background 0.2s ease; cursor:pointer; border-radius:10px;
+    padding:0.85rem 0; border-bottom:1px solid rgba(226,232,240,0.7);
+    transition:opacity 0.2s ease; cursor:pointer;
   }
   .music-card:last-child { border-bottom:none; }
-  .music-card:hover { background:rgba(100,149,237,0.04); }
+  .music-card:hover { opacity:0.65; }
 
   .music-thumb {
     width:44px; height:44px; border-radius:8px;

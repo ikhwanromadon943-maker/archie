@@ -1,0 +1,97 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="About" description="The philosophy behind Archie.">
+
+  <div class="about-outer">
+    <div class="about-card">
+      <div class="about-deco"></div>
+      <article class="about-article">
+
+        <section class="about-section">
+          <h1 class="about-h1">Archie.</h1>
+          <div class="about-body">
+            <p>The name is a whisper from the woodlands, taken from <em>Myosotis sylvatica</em>.</p>
+            <p>To the world, it is known simply as the <strong>Forget-Me-Not</strong>. A small, unassuming blue flower that carries a weight far heavier than its petals: a plea against oblivion.</p>
+          </div>
+        </section>
+
+        <div class="about-divider"></div>
+
+        <section class="about-section">
+          <h2 class="about-h2">The Philosophy</h2>
+          <div class="about-body">
+            <p>In the Victorian language of flowers, the Forget-Me-Not symbolizes true love, faithfulness, and <em class="italic-mute">memories that never fade</em>.</p>
+            <p>That is the sole purpose of this space.</p>
+            <p>It is not a garden to be tended, but a <strong>Sanctuary</strong>. A place to keep the moments that matter, freezing them in digital amber so they are not washed away by time.</p>
+          </div>
+        </section>
+
+        <div class="about-quote-wrap">
+          <blockquote class="about-quote">
+            "Silent as the blue flower,<br/>loud as the memory it holds."
+          </blockquote>
+        </div>
+
+      </article>
+    </div>
+    <div class="enduring-label">ENDURING MEMORIES</div>
+  </div>
+
+</Base>
+
+<style>
+  .about-outer { margin-top:2rem; }
+  .about-card {
+    background:rgba(255,255,255,0.58);
+    backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);
+    border:1px solid rgba(255,255,255,0.82);
+    padding:2.75rem 3.5rem; border-radius:1.75rem;
+    position:relative; overflow:hidden;
+    box-shadow:0 2px 20px rgba(100,149,237,0.06);
+  }
+  .about-deco {
+    position:absolute; top:-40px; right:-40px;
+    width:160px; height:160px;
+    background:rgba(100,149,237,0.1);
+    border-radius:50%; filter:blur(40px); pointer-events:none;
+  }
+  .about-article { position:relative; z-index:1; display:flex; flex-direction:column; gap:3rem; }
+
+  .about-h1 {
+    font-family:'Playfair Display',serif;
+    font-size:clamp(2.5rem,8vw,3.5rem);
+    font-weight:700; color:#6495ED;
+    letter-spacing:-0.03em; margin-bottom:1.5rem;
+  }
+  .about-h2 {
+    font-family:'Playfair Display',serif;
+    font-size:1.5rem; font-weight:700;
+    color:#334155; margin-bottom:1rem;
+  }
+  .about-body { display:flex; flex-direction:column; gap:1rem; }
+  .about-body p { color:#475569; font-size:1.1rem; line-height:1.95; font-weight:300; }
+  .about-body em { font-style:italic; color:#1e293b; }
+  .about-body strong { font-weight:700; color:#1e293b; }
+  .italic-mute { font-style:italic; color:#64748b; }
+
+  .about-divider { width:64px; height:1px; background:rgba(148,163,184,0.35); }
+
+  .about-quote-wrap { padding-top:1rem; }
+  .about-quote {
+    font-family:'Playfair Display',serif;
+    font-style:italic; font-size:1.25rem;
+    color:#64748b; line-height:1.7; text-align:center;
+  }
+
+  .enduring-label {
+    text-align:center; margin-top:2rem;
+    font-size:0.6rem; color:#94a3b8;
+    letter-spacing:0.25em; text-transform:uppercase; opacity:0.6;
+    font-family:monospace;
+  }
+
+  @media (max-width:480px) {
+    .about-card { padding:2rem 1.5rem; }
+  }
+</style>

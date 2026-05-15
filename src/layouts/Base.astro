@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 interface Props { title?: string; description?: string; }
-const { title = 'Archie', description = 'A personal space.' } = Astro.props;
+const { title = 'Sylvatica', description = 'A personal space.' } = Astro.props;
 const p = Astro.url.pathname;
 const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href);
 ---
@@ -11,10 +11,10 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <meta name="description" content={description}/>
-  <title>{title} · Archie</title>
+  <title>{title} · Sylvatica</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
 </head>
 <body>
@@ -22,7 +22,7 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
   <div class="flowers" id="flowers"></div>
 
   <header class="site-header">
-    <a href="/" class="nav-logo">Archie<span class="logo-dot">.</span></a>
+    <a href="/" class="nav-logo">Sylvatica<span class="logo-dot">.</span></a>
   </header>
 
   <main><slot /></main>
@@ -59,8 +59,8 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
   </div>
 
   <script>
-    // FIXED: Hapus type annotations, tambah safety check, bunga lebih banyak lebih cepat
-    const FLOWER = (c1, c2) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+    // ── Forget-me-not flower SVG ──
+    const FLOWER = (c1: string, c2: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
       <ellipse cx="20" cy="10" rx="4.8" ry="9.2" fill="${c1}" opacity="0.92" transform="rotate(0,20,20)"/>
       <ellipse cx="20" cy="10" rx="4.8" ry="9.2" fill="${c2}" opacity="0.88" transform="rotate(72,20,20)"/>
       <ellipse cx="20" cy="10" rx="4.8" ry="9.2" fill="${c1}" opacity="0.92" transform="rotate(144,20,20)"/>
@@ -70,46 +70,47 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
       <circle cx="20" cy="20" r="3" fill="#fefce8"/>
     </svg>`;
 
-    const PETAL = (c) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 28">
+    const PETAL = (c: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 28">
       <ellipse cx="9" cy="14" rx="6" ry="12" fill="${c}" opacity="0.55"/>
     </svg>`;
 
+    // Color palette — subtle blues
     const PALETTES = [
       ['#b8d0f4','#9abde8'],
       ['#c2d8f6','#a8c8ec'],
       ['#bdd4f5','#9ec0ea'],
       ['#ccdaf7','#b2c9ef'],
-      ['#a9c4f0','#8fb3e6'],
     ];
 
-    const container = document.getElementById('flowers');
-    if (container) {
-      function spawnFlower() {
-        const el = document.createElement('div');
-        el.className = 'petal';
-        const isFlower = Math.random() > 0.25;
-        const size = isFlower ? 16 + Math.random() * 22 : 8 + Math.random() * 12;
-        const pal = PALETTES[Math.floor(Math.random() * PALETTES.length)];
-        const side = Math.random();
-        let x;
-        if (side < 0.5) x = 60 + Math.random() * 38;
-        else if (side < 0.75) x = 2 + Math.random() * 20;
-        else x = 20 + Math.random() * 38;
+    const container = document.getElementById('flowers')!;
 
-        const dur = 6 + Math.random() * 6;
-        const delay = Math.random() * 1;
-        const dx = (Math.random() - 0.5) * 80;
-        const rot = Math.random() * 360;
+    function spawnFlower() {
+      const el = document.createElement('div');
+      el.className = 'petal';
+      const isFlower = Math.random() > 0.35;
+      const size     = isFlower ? 18 + Math.random() * 20 : 9 + Math.random() * 10;
+      const pal      = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+      // Spawn mostly right side + scattered left
+      const side = Math.random();
+      let x: number;
+      if (side < 0.65)      x = 62 + Math.random() * 36;   // right zone
+      else if (side < 0.85) x = 2  + Math.random() * 18;   // left zone
+      else                  x = 22 + Math.random() * 38;   // center scatter
 
-        el.style.cssText = `left:${x}%;top:-60px;width:${size}px;height:${size}px;--dx:${dx}px;--rot:${rot}deg;animation:floatPetal ${dur}s ${delay}s linear forwards`;
-        el.innerHTML = isFlower ? FLOWER(pal[0], pal[1]) : PETAL(pal[0]);
-        container.appendChild(el);
-        setTimeout(() => el.remove(), (dur + delay + 1) * 1000);
-      }
+      const dur   = 12 + Math.random() * 10;
+      const delay = Math.random() * 2;
+      const dx    = (Math.random() - 0.5) * 80;
+      const rot   = Math.random() * 360;
 
-      for (let i = 0; i < 35; i++) setTimeout(spawnFlower, i * 80);
-      setInterval(spawnFlower, 450);
+      el.style.cssText = `left:${x}%;top:-60px;width:${size}px;height:${size}px;--dx:${dx}px;--rot:${rot}deg;animation:floatPetal ${dur}s ${delay}s linear forwards`;
+      el.innerHTML = isFlower ? FLOWER(pal[0], pal[1]) : PETAL(pal[0]);
+      container.appendChild(el);
+      setTimeout(() => el.remove(), (dur + delay + 1) * 1000);
     }
+
+    // Burst spawn on load then steady rain
+    for (let i = 0; i < 18; i++) setTimeout(spawnFlower, i * 220);
+    setInterval(spawnFlower, 1100);
   </script>
 
 </body>

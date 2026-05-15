@@ -242,12 +242,14 @@ import Base from '../../layouts/Base.astro';
   .modal-like-btn {
     display:flex; align-items:center; gap:0.4rem;
     font-size:0.75rem; font-family:monospace;
-    color:#94a3b8; background:none; border:none;
-    cursor:pointer; padding:0.3rem 0.65rem; border-radius:999px;
-    transition:all 0.2s ease;
+    color:#94a3b8; background:none; border:1px solid #e2e8f0;
+    cursor:pointer; padding:0.3rem 0.75rem; border-radius:999px;
+    transition:all 0.2s ease; position:relative; z-index:10;
   }
-  .modal-like-btn:hover { color:#ef4444; background:rgba(239,68,68,0.07); }
-  .modal-like-btn.liked { color:#ef4444; }
-  /* code tidak terlalu tebal */
-  .code-body code { font-weight:300 !important; }
+  .modal-like-btn:hover { color:#ef4444; background:rgba(239,68,68,0.07); border-color:#fecaca; }
+  .modal-like-btn.liked { color:#ef4444; border-color:#fecaca; background:rgba(239,68,68,0.05); }
+  /* code lebih ringan & rapi */
+  .code-body { font-size:0.78rem !important; line-height:1.7 !important; }
+  .code-body code { font-weight:300 !important; letter-spacing:0.01em; }
+  .code-copy { font-weight:400 !important; }
 </style>

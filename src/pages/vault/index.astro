@@ -16,14 +16,9 @@ import Base from '../../layouts/Base.astro';
       <h2 class="vault-title">Private Vault</h2>
       <p class="vault-sub">Enter access code</p>
 
-      <!-- PIN dots -->
       <div class="pin-dots-wrap" id="pin-wrap">
         <div class="pin-dots" id="pin-dots">
-          {
-            Array.from({ length: 8 }).map((_, i) => (
-              <div class="pin-dot" id={`d${i}`}></div>
-            ))
-          }
+          {Array.from({length:8}).map((_,i) => <div class="pin-dot" id={`d${i}`}></div>)}
         </div>
         <input type="password" id="vault-pw" class="vault-input" autocomplete="off" maxlength="32"/>
       </div>
@@ -67,24 +62,15 @@ import Base from '../../layouts/Base.astro';
 
 <script>
   import { supabase } from '../../lib/supabase';
-  
   const SESSION_KEY = 'vault_unlocked';
-  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
 
-  // FIXED: Escape HTML to prevent XSS
   const escapeHtml = (str) => {
     if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
+    return str.replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
   };
 
   let pinValue = '';
-  
-  // FIXED: Safety checks - hapus non-null assertion
   const pwInput = document.getElementById('vault-pw');
   const pinWrap = document.getElementById('pin-wrap');
   const pinDots = document.getElementById('pin-dots');
@@ -93,47 +79,26 @@ import Base from '../../layouts/Base.astro';
   const vaultLocked = document.getElementById('vault-locked');
   const vaultContent = document.getElementById('vault-content');
   const vaultLock = document.getElementById('vault-lock');
-  const vaultLoading = document.getElementById('vault-loading');
-  const vaultList = document.getElementById('vault-list');
-  const vaultEmpty = document.getElementById('vault-empty');
 
   function updateDots() {
     for (let i = 0; i < 8; i++) {
       const dot = document.getElementById(`d${i}`);
       if (dot) {
-        if (i < pinValue.length) {
-          dot.classList.add('filled');
-        } else {
-          dot.classList.remove('filled');
-        }
+        if (i < pinValue.length) dot.classList.add('filled');
+        else dot.classList.remove('filled');
       }
     }
   }
 
-  if (pinWrap && pwInput) {
-    pinWrap.addEventListener('click', () => pwInput.focus());
-  }
-  
+  if (pinWrap && pwInput) pinWrap.addEventListener('click', () => pwInput.focus());
   if (pwInput) {
-    pwInput.addEventListener('input', function() {
-      pinValue = this.value;
-      updateDots();
-    });
-    
-    pwInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && vaultUnlock) {
-        vaultUnlock.click();
-      }
-    });
+    pwInput.addEventListener('input', function() { pinValue = this.value; updateDots(); });
+    pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && vaultUnlock) vaultUnlock.click(); });
   }
 
   async function getPass() {
     try {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'admin_pass')
-        .single();
+      const { data, error } = await supabase.from('settings').select('value').eq('key','admin_pass').single();
       if (error) throw error;
       return data?.value || 'mysite2025';
     } catch (err) {
@@ -143,32 +108,24 @@ import Base from '../../layouts/Base.astro';
   }
 
   async function renderVault() {
-    if (!vaultLoading || !vaultList || !vaultEmpty) return;
-    
-    vaultLoading.style.display = 'flex';
-    vaultList.innerHTML = '';
-    
-    const { data: items, error } = await supabase
-      .from('vault')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    vaultLoading.style.display = 'none';
-    
-    if (error || !items || items.length === 0) {
-      vaultEmpty.style.display = 'block';
-      return;
-    }
-    
-    vaultEmpty.style.display = 'none';
-    
+    const loading = document.getElementById('vault-loading');
+    const list = document.getElementById('vault-list');
+    const empty = document.getElementById('vault-empty');
+    if (!loading || !list || !empty) return;
+
+    loading.style.display = 'flex';
+    list.innerHTML = '';
+    const { data: items, error } = await supabase.from('vault').select('*').order('created_at',{ascending:false});
+    loading.style.display = 'none';
+    if (error || !items?.length) { empty.style.display='block'; return; }
+    empty.style.display='none';
+
     items.forEach((item, i) => {
       const escapedTitle = escapeHtml(item.title);
-      const escapedContent = escapeHtml(item.content).replace(/\n/g, '<br>');
-      
+      const escapedContent = escapeHtml(item.content).replace(/\n/g,'<br>');
       const el = document.createElement('article');
       el.className = 'note-card';
-      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i * 0.07}s forwards`;
+      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.07}s forwards`;
       el.innerHTML = `
         <div class="note-card-body">
           <div class="note-meta-row">
@@ -180,7 +137,7 @@ import Base from '../../layouts/Base.astro';
           <h2 class="note-title">${escapedTitle}</h2>
           <p class="note-body" style="-webkit-line-clamp:unset;overflow:visible">${escapedContent}</p>
         </div>`;
-      vaultList.appendChild(el);
+      list.appendChild(el);
     });
   }
 
@@ -192,12 +149,8 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  // Check session storage for existing unlock
-  if (sessionStorage.getItem(SESSION_KEY) === '1') {
-    unlock();
-  }
+  if (sessionStorage.getItem(SESSION_KEY) === '1') unlock();
 
-  // Unlock button handler
   if (vaultUnlock && pwInput && vaultError && pinDots) {
     vaultUnlock.addEventListener('click', async () => {
       const correct = await getPass();
@@ -216,7 +169,6 @@ import Base from '../../layouts/Base.astro';
     });
   }
 
-  // Lock button handler
   if (vaultLock) {
     vaultLock.addEventListener('click', () => {
       sessionStorage.removeItem(SESSION_KEY);
@@ -224,190 +176,3 @@ import Base from '../../layouts/Base.astro';
     });
   }
 </script>
-
-<style is:global>
-  /* FIXED: Gunakan is:global agar CSS apply ke innerHTML elements */
-  
-  @keyframes shake {
-    0%, 100% { transform: translate(0); }
-    25% { transform: translate(-5px); }
-    75% { transform: translate(5px); }
-  }
-  
-  .pin-dots.shake {
-    animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
-  }
-
-  .vault-outer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 70vh;
-  }
-  
-  .vault-card {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 2rem;
-    padding: 3rem 2.5rem;
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(100, 149, 237, 0.12), 0 4px 16px rgba(0, 0, 0, 0.05);
-  }
-  
-  .vault-icon-circle {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #eff6ff, #fff);
-    border: 1px solid rgba(100, 149, 237, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    box-shadow: 0 2px 16px rgba(100, 149, 237, 0.15);
-    transition: transform 0.3s ease;
-  }
-  
-  .vault-card:hover .vault-icon-circle {
-    transform: scale(1.07);
-  }
-  
-  .vault-title {
-    font-family: var(--font-serif);
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 0.3rem;
-  }
-  
-  .vault-sub {
-    font-size: 0.78rem;
-    color: var(--text-mute);
-    margin-bottom: 2rem;
-  }
-
-  .pin-dots-wrap {
-    cursor: text;
-    margin-bottom: 1.5rem;
-    position: relative;
-  }
-  
-  .pin-dots {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    padding: 0.5rem 0;
-  }
-  
-  .pin-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #e2e8f0;
-    transition: background 0.15s ease, transform 0.15s ease;
-  }
-  
-  .pin-dot.filled {
-    background: var(--blue);
-    transform: scale(1.2);
-  }
-  
-  .vault-input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-    width: 1px;
-    height: 1px;
-  }
-
-  .vault-error {
-    font-size: 0.72rem;
-    font-family: var(--font-mono);
-    color: var(--red);
-    min-height: 1.4em;
-    margin-bottom: 0.75rem;
-  }
-
-  .vault-unlock-btn {
-    width: 100%;
-    padding: 1rem;
-    background: var(--blue);
-    color: #fff;
-    border: none;
-    border-radius: 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 16px rgba(100, 149, 237, 0.35);
-  }
-  
-  .vault-unlock-btn:hover {
-    background: var(--blue-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(100, 149, 237, 0.45);
-  }
-
-  .page-hdr-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    gap: 1rem;
-  }
-  
-  .vault-unlocked-title {
-    font-family: var(--font-serif);
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--blue);
-  }
-  
-  .vault-unlocked-sub {
-    color: #64748b;
-    font-size: 0.82rem;
-    margin-top: 0.25rem;
-    font-weight: 300;
-  }
-  
-  .vault-lock-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 0.5rem;
-    border: 1.5px solid #e2e8f0;
-    color: var(--text-mute);
-    font-size: 0.75rem;
-    background: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-  }
-  
-  .vault-lock-btn:hover {
-    border-color: var(--blue);
-    color: var(--blue);
-    background: rgba(100, 149, 237, 0.05);
-  }
-  
-  .empty-icon {
-    display: flex;
-    justify-content: center;
-    color: var(--blue);
-    opacity: 0.2;
-    margin-bottom: 1rem;
-  }
-  
-  .notes-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-</style>

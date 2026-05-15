@@ -1,23 +1,41 @@
 ---
 import Base from '../../layouts/Base.astro';
 ---
-<Base title="Journal" description="Short thoughts, fleeting moments, memories etched in digital ink.">
+<Base title="Code Library" description="Fragments of logic, syntax, and solutions.">
 
-  <header class="notes-hdr">
-    <h1>The Journal</h1>
-    <p>Short thoughts, fleeting moments, and memories etched in digital ink.</p>
+  <header class="snip-hdr">
+    <h1>Code Library</h1>
+    <p>Fragments of logic, syntax, and solutions.</p>
   </header>
 
   <div class="loading-state" id="loading"><span class="loader"></span></div>
-
-  <div class="notes-feed" id="notes-list"></div>
-
+  <div class="snip-feed" id="snip-list"></div>
   <div class="empty-state" id="empty-state" style="display:none">
     <div class="empty-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
     </div>
-    <h3>Nothing written yet.</h3>
-    <p>The first entry has yet to be made.</p>
+    <h3>No snippets yet.</h3>
+    <p>The first snippet has yet to be saved.</p>
+  </div>
+
+  <!-- Code Modal -->
+  <div class="modal-overlay" id="snip-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">—</h2>
+        <button class="modal-close" id="modal-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="modal-desc" id="modal-desc"></p>
+      <div class="code-wrapper">
+        <div class="code-header">
+          <span id="modal-lang">js</span>
+          <button class="code-copy" id="copy-btn">copy</button>
+        </div>
+        <pre class="code-body"><code id="modal-code"></code></pre>
+      </div>
+    </div>
   </div>
 
 </Base>
@@ -25,312 +43,160 @@ import Base from '../../layouts/Base.astro';
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const LS_KEY = 'liked_notes_v2';
-  
-  // FIXED: Hapus TypeScript annotations
-  const getLiked = () => {
-    try { 
-      return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); 
-    } catch { 
-      return new Set(); 
-    }
+  const LS_LIKED = 'liked_snippets_v1';
+  const getSnipLiked = () => {
+    try { return new Set(JSON.parse(localStorage.getItem(LS_LIKED)||'[]')); }
+    catch { return new Set(); }
   };
-  
-  const saveLiked = (s) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
-  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const saveSnipLiked = (s) => localStorage.setItem(LS_LIKED, JSON.stringify([...s]));
 
-  // FIXED: Escape HTML to prevent XSS
+  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'});
+  let currentCode = '';
+  const viewedThisSession = new Set();
+
   const escapeHtml = (str) => {
     if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
+    return str.replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
   };
 
-  async function render() {
-    // FIXED: Safety checks - hapus non-null assertion
-    const list = document.getElementById('notes-list');
-    const loading = document.getElementById('loading');
-    const empty = document.getElementById('empty-state');
-    
-    if (!list || !loading || !empty) return;
+  function getLangClass(lang) {
+    const l = lang?.toLowerCase() || '';
+    if (['js','javascript'].includes(l)) return 'lang-js';
+    if (['ts','typescript'].includes(l)) return 'lang-ts';
+    if (['py','python'].includes(l))     return 'lang-py';
+    if (['sh','bash','shell'].includes(l)) return 'lang-sh';
+    if (l === 'css')  return 'lang-css';
+    if (l === 'html') return 'lang-html';
+    if (l === 'json') return 'lang-json';
+    return 'lang-other';
+  }
 
-    const { data: notes, error } = await supabase
-      .from('notes')
-      .select('*')
-      .order('created_at', { ascending: false });
+  function openModal(s, el) {
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modal-desc');
+    const modalLang = document.getElementById('modal-lang');
+    const modalCode = document.getElementById('modal-code');
+    const modal = document.getElementById('snip-modal');
+    if (!modalTitle || !modalDesc || !modalLang || !modalCode || !modal) return;
+
+    currentCode = s.code;
+    modalTitle.textContent = s.title;
+    modalDesc.textContent = s.description || '';
+    modalLang.textContent = s.language;
+    modalCode.textContent = s.code;
+    modal.classList.add('open');
+
+    if (!viewedThisSession.has(s.id)) {
+      viewedThisSession.add(s.id);
+      const viewEl = el?.querySelector('.snip-stat-views');
+      if (viewEl) {
+        const currentViews = parseInt(viewEl.textContent?.replace(/[^0-9]/g, '') || '0');
+        viewEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>${currentViews + 1}`;
+      }
+      supabase.rpc('increment_views', { row_id: s.id });
+    }
+  }
+
+  async function render() {
+    const loading = document.getElementById('loading');
+    const list = document.getElementById('snip-list');
+    const empty = document.getElementById('empty-state');
+    if (!loading || !list || !empty) return;
+
+    const { data: snippets, error } = await supabase.from('snippets').select('*').order('created_at',{ascending:false});
 
     loading.style.display = 'none';
-    
-    if (error) {
-      list.innerHTML = `<p class="err-msg">[error] ${escapeHtml(error.message)}</p>`;
-      return;
-    }
-    
-    if (!notes || notes.length === 0) {
-      empty.style.display = 'block';
-      return;
-    }
+    if (error) { list.innerHTML=`<p class="err-msg">[error] ${escapeHtml(error.message)}</p>`; return; }
+    if (!snippets?.length) { empty.style.display='block'; return; }
 
-    const liked = getLiked();
+    const liked = getSnipLiked();
 
-    notes.forEach((note, i) => {
-      const isLiked = liked.has(note.id);
-      const hFill = isLiked ? '#ef4444' : 'none';
-      const hStroke = isLiked ? '#ef4444' : 'currentColor';
-      
-      const escapedTitle = note.title ? escapeHtml(note.title) : '';
-      const escapedContent = note.content ? escapeHtml(note.content).replace(/\n/g, '<br>') : '';
-      const escapedImageUrl = note.image_url ? escapeHtml(note.image_url) : '';
+    snippets.forEach((s, i) => {
+      const isLiked = liked.has(s.id);
+      const escapedTitle = escapeHtml(s.title);
+      const escapedDesc = s.description ? escapeHtml(s.description) : '';
+      const escapedLang = escapeHtml(s.language || 'code');
 
-      const el = document.createElement('article');
-      el.className = 'note-card';
-      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i * 0.07}s forwards`;
+      const el = document.createElement('div');
+      el.className = 'snip-card';
+      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.06}s forwards`;
 
       el.innerHTML = `
-        <div class="note-card-body">
-          <div class="note-meta-row">
-            <div class="note-meta-left">
-              <span class="note-dot"></span>
-              <span class="note-date">${fdate(note.created_at)}</span>
-            </div>
-            <div class="note-edit-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        <div class="snip-card-body">
+          <div class="snip-badge">
+            <span class="snip-stat snip-stat-views">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
-            </div>
-          </div>
-          ${note.title ? `<h2 class="note-title">${escapedTitle}</h2>` : ''}
-          ${note.image_url ? `<img src="${escapedImageUrl}" alt="" class="note-img" loading="lazy"/>` : ''}
-          <p class="note-body">${escapedContent}</p>
-          <div class="note-footer">
-            <button class="note-like${isLiked ? ' liked' : ''}" data-id="${note.id}" data-liked="${isLiked}" aria-label="Like">
-              <svg class="heart-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                fill="${hFill}" stroke="${hStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              ${s.views ?? 0}
+            </span>
+            <div class="snip-sep"></div>
+            <button class="snip-like-inline${isLiked ? ' liked' : ''}" data-id="${s.id}" data-liked="${isLiked}" aria-label="Like snippet">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="${isLiked ? '#ef4444' : 'none'}" stroke="${isLiked ? '#ef4444' : 'currentColor'}" stroke-width="2">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
-              <span class="lc">${note.likes ?? 0}</span>
+              <span class="slc">${s.likes ?? 0}</span>
             </button>
+          </div>
+          <h3 class="snip-title">${escapedTitle}</h3>
+          ${s.description ? `<p class="snip-desc">${escapedDesc}</p>` : ''}
+          <div class="snip-foot">
+            <span class="snip-lang ${getLangClass(s.language)}">${escapedLang}</span>
+            <span class="snip-date">${fdate(s.created_at)}</span>
           </div>
         </div>`;
 
-      // FIXED: Safety check untuk like button
-      const likeBtn = el.querySelector('.note-like');
+      const likeBtn = el.querySelector('.snip-like-inline');
       if (likeBtn) {
-        likeBtn.addEventListener('click', async function() {
-          const id = this.getAttribute('data-id');
+        likeBtn.addEventListener('click', async function(e) {
+          e.stopPropagation();
+          const id = this.dataset.id;
           if (!id) return;
-          
-          const wasLiked = this.getAttribute('data-liked') === 'true';
-          const likedSet = getLiked();
-          const lc = this.querySelector('.lc');
+          const wasLiked = this.dataset.liked === 'true';
+          const likedSet = getSnipLiked();
+          const slc = this.querySelector('.slc');
           const svg = this.querySelector('svg');
-          
-          if (!lc || !svg) return;
-          
-          const cur = parseInt(lc.textContent || '0');
+          if (!slc || !svg) return;
+          const cur = parseInt(slc.textContent || '0');
 
           if (wasLiked) {
-            likedSet.delete(id);
-            this.setAttribute('data-liked', 'false');
-            this.classList.remove('liked');
-            svg.setAttribute('fill', 'none');
-            svg.setAttribute('stroke', 'currentColor');
-            lc.textContent = String(Math.max(0, cur - 1));
-            await supabase.rpc('decrement_likes', { table_name: 'notes', row_id: id });
+            likedSet.delete(id); this.dataset.liked='false'; this.classList.remove('liked');
+            svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
+            slc.textContent = String(Math.max(0, cur - 1));
+            await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:id});
           } else {
-            likedSet.add(id);
-            this.setAttribute('data-liked', 'true');
-            this.classList.add('liked');
-            svg.setAttribute('fill', '#ef4444');
-            svg.setAttribute('stroke', '#ef4444');
-            lc.textContent = String(cur + 1);
-            await supabase.rpc('increment_likes', { table_name: 'notes', row_id: id });
+            likedSet.add(id); this.dataset.liked='true'; this.classList.add('liked');
+            svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+            slc.textContent = String(cur + 1);
+            await supabase.rpc('increment_likes',{table_name:'snippets',row_id:id});
           }
-          saveLiked(likedSet);
+          saveSnipLiked(likedSet);
         });
       }
 
+      el.addEventListener('click', () => openModal(s, el));
       list.appendChild(el);
     });
   }
 
   render();
+
+  const modalClose = document.getElementById('modal-close');
+  const snipModal = document.getElementById('snip-modal');
+  const copyBtn = document.getElementById('copy-btn');
+
+  if (modalClose && snipModal) modalClose.addEventListener('click', () => snipModal.classList.remove('open'));
+  if (snipModal) snipModal.addEventListener('click', (e) => { if (e.target === snipModal) snipModal.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && snipModal) snipModal.classList.remove('open'); });
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(currentCode).then(() => {
+        const btn = copyBtn;
+        btn.textContent = 'copied!';
+        setTimeout(() => btn.textContent = 'copy', 2000);
+      });
+    });
+  }
 </script>
-
-<style is:global>
-  /* FIXED: Gunakan is:global agar CSS apply ke innerHTML elements */
-  
-  .notes-hdr {
-    margin-bottom: 1.75rem;
-  }
-  
-  .notes-hdr h1 {
-    font-family: var(--font-serif);
-    font-size: 2.1rem;
-    font-weight: 700;
-    color: var(--blue);
-    letter-spacing: -0.02em;
-  }
-  
-  .notes-hdr p {
-    color: var(--text-mute);
-    font-size: 0.82rem;
-    margin-top: 0.3rem;
-  }
-
-  .notes-feed {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  /* FIXED: Background lebih transparan */
-  .note-card {
-    background: rgba(255, 255, 255, 0.38);
-    backdrop-filter: blur(26px);
-    -webkit-backdrop-filter: blur(26px);
-    border: 1px solid rgba(255, 255, 255, 0.62);
-    border-radius: 22px;
-    box-shadow: 0 4px 20px rgba(100, 149, 237, 0.09), 0 1px 4px rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  
-  .note-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 14px 40px rgba(100, 149, 237, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
-  }
-  
-  .note-card-body {
-    padding: 1.4rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-  }
-
-  .note-meta-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px dashed rgba(148, 163, 184, 0.3);
-  }
-  
-  .note-meta-left {
-    display: flex;
-    align-items: center;
-    gap: 0.42rem;
-  }
-  
-  .note-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--blue);
-    opacity: 0.5;
-    flex-shrink: 0;
-  }
-  
-  .note-date {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 0.78rem;
-    color: var(--text-mute);
-    letter-spacing: 0.01em;
-  }
-  
-  .note-edit-icon {
-    color: #cbd5e1;
-    transition: color var(--ease);
-  }
-  
-  .note-card:hover .note-edit-icon {
-    color: var(--blue);
-  }
-
-  .note-title {
-    font-family: var(--font-sans);
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.3;
-    transition: color var(--ease);
-    letter-spacing: -0.01em;
-  }
-  
-  .note-card:hover .note-title {
-    color: var(--blue);
-  }
-  
-  .note-img {
-    width: 100%;
-    max-height: 260px;
-    object-fit: cover;
-    border-radius: 14px;
-    margin: 0.2rem 0;
-    display: block;
-  }
-  
-  .note-body {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    line-height: 1.85;
-    white-space: pre-wrap;
-  }
-
-  .note-footer {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 0.2rem;
-  }
-  
-  .note-like {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.75rem;
-    font-family: var(--font-mono);
-    color: var(--text-mute);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.28rem 0.6rem;
-    border-radius: 999px;
-    transition: all var(--ease);
-  }
-  
-  .note-like:hover {
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.07);
-  }
-  
-  .note-like.liked {
-    color: #ef4444;
-  }
-  
-  .note-like.liked svg {
-    fill: #ef4444;
-    stroke: #ef4444;
-  }
-  
-  .heart-icon {
-    transition: transform var(--ease);
-  }
-  
-  .note-like:hover .heart-icon {
-    transform: scale(1.18);
-  }
-  
-  .err-msg {
-    color: var(--red);
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    padding: 2rem;
-    text-align: center;
-  }
-</style>

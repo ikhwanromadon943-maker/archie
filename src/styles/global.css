@@ -486,22 +486,7 @@ h1,h2,h3{font-family:var(--font-serif);font-weight:700;color:var(--blue);line-he
 .modal-close:hover{background:var(--border);color:var(--text)}
 .modal-desc{font-size:0.8rem;color:var(--text-mute);margin-bottom:0.5rem}
 
-/* ── Lightbox ────────────────────────────────── */
-.lightbox{
-  position:fixed;inset:0;background:rgba(0,0,0,0.93);
-  z-index:400;display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity 0.2s ease;
-}
-.lightbox.open{opacity:1;pointer-events:all}
-.lightbox img{max-width:88vw;max-height:88vh;object-fit:contain;border-radius:var(--r-md)}
-.lightbox-close{
-  position:absolute;top:1.25rem;right:1.25rem;
-  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);
-  color:rgba(255,255,255,0.7);width:36px;height:36px;
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  transition:all var(--ease);
-}
-.lightbox-close:hover{background:rgba(255,255,255,0.2);color:#fff}
+/* lightbox removed */
 
 /* ── Music ───────────────────────────────────── */
 .music-hero{text-align:center;padding:1.5rem 0 2rem;border-bottom:1px solid var(--border);margin-bottom:2rem}

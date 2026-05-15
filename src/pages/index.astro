@@ -35,7 +35,7 @@ import Base from '../layouts/Base.astro';
 
   <!-- Cards -->
   <div class="home-cards">
-    <a href="/notes" class="home-card group">
+    <a href="/notes" class="home-card">
       <div class="home-card-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 20h9"/>
@@ -45,7 +45,7 @@ import Base from '../layouts/Base.astro';
       <h3>The Written Word</h3>
       <p>Fragments of thought and whispered narratives. A collection of words intended to anchor the fleeting nature of our days before they fade.</p>
     </a>
-    <a href="/gallery" class="home-card group">
+    <a href="/gallery" class="home-card">
       <div class="home-card-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -64,105 +64,116 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <style>
+  /* ── Page enter animation ── */
+  main { animation: pageIn 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+  @keyframes pageIn {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
   /* Hero */
   .hero-wrap {
     display:flex; flex-direction:column; align-items:center;
     justify-content:center; min-height:65vh;
-    text-align:center; padding:0 1rem;
+    text-align:center; padding:0 0.5rem;
   }
-  .hero-badge-wrap { margin-bottom:1.5rem; }
+  .hero-badge-wrap { margin-bottom:1.25rem; }
   .hero-badge {
     display:inline-block;
-    padding:0.38rem 1.1rem;
+    padding:0.4rem 1.15rem;
     border-radius:999px;
     border:1px solid rgba(100,149,237,0.3);
     background:rgba(255,255,255,0.55);
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
     color:#6495ED;
-    font-size:0.65rem; font-weight:700;
-    letter-spacing:0.2em; text-transform:uppercase;
+    font-size:0.7rem; font-weight:700;
+    letter-spacing:0.18em; text-transform:uppercase;
   }
   .hero-title {
     font-family:'Playfair Display',Georgia,serif;
-    font-size:clamp(4rem,14vw,7rem);
+    font-size:clamp(4.5rem,15vw,8rem);
     font-weight:700; color:#6495ED;
     letter-spacing:-0.04em; line-height:0.95;
     margin-bottom:1.25rem;
-    filter:drop-shadow(0 2px 8px rgba(100,149,237,0.15));
+    filter:drop-shadow(0 2px 10px rgba(100,149,237,0.18));
   }
   .hero-sub {
-    font-size:1rem; font-weight:300;
-    color:#475569; line-height:1.85;
-    max-width:480px; margin-bottom:2.5rem;
+    font-size:1.08rem; font-weight:300;
+    color:#475569; line-height:1.9;
+    max-width:500px; margin-bottom:2.5rem;
   }
   .hero-accent { color:#6495ED; font-weight:500; font-style:italic; }
+
+  /* Buttons — stretch horizontally, fill container width */
   .hero-btns {
-    display:flex; flex-wrap:wrap;
-    gap:1rem; justify-content:center;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0.85rem;
+    width:100%; max-width:480px;
   }
   .btn-primary-hero {
-    display:inline-flex; align-items:center; gap:0.55rem;
-    padding:1rem 2.2rem;
+    display:flex; align-items:center; justify-content:center; gap:0.55rem;
+    padding:1.05rem 1rem;
     background:#6495ED; color:#fff;
     border-radius:0.9rem; font-weight:600; font-size:1rem;
     box-shadow:0 8px 24px rgba(100,149,237,0.35);
     transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
   }
-  .btn-primary-hero:hover { background:#5b89dc; transform:translateY(-3px) scale(1.03); box-shadow:0 14px 32px rgba(100,149,237,0.45); }
-  .btn-primary-hero:active { transform:scale(0.96) translateY(0); transition:all 0.12s ease; }
+  .btn-primary-hero:hover  { background:#5b89dc; transform:translateY(-3px); box-shadow:0 14px 32px rgba(100,149,237,0.45); }
+  .btn-primary-hero:active { transform:scale(0.96); transition:all 0.1s ease; }
   .btn-ghost-hero {
-    display:inline-flex; align-items:center; gap:0.55rem;
-    padding:1rem 2.2rem;
-    background:rgba(255,255,255,0.65); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:center; gap:0.55rem;
+    padding:1.05rem 1rem;
+    background:rgba(255,255,255,0.6); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
     border:1.5px solid rgba(255,255,255,0.85);
     color:#6495ED; border-radius:0.9rem; font-weight:600; font-size:1rem;
-    box-shadow:0 4px 12px rgba(0,0,0,0.06);
+    box-shadow:0 4px 12px rgba(0,0,0,0.05);
     transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
   }
-  .btn-ghost-hero:hover { background:rgba(255,255,255,0.9); border-color:rgba(100,149,237,0.4); transform:translateY(-3px) scale(1.03); }
-  .btn-ghost-hero:active { transform:scale(0.96) translateY(0); transition:all 0.12s ease; }
+  .btn-ghost-hero:hover  { background:rgba(255,255,255,0.88); border-color:rgba(100,149,237,0.35); transform:translateY(-3px); }
+  .btn-ghost-hero:active { transform:scale(0.96); transition:all 0.1s ease; }
 
   /* Cards */
   .home-cards {
-    display:grid; grid-template-columns:repeat(2,1fr);
-    gap:1.5rem; margin:2rem 0 3rem;
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:1.25rem; margin:2rem 0 3rem;
   }
   .home-card {
-    background:rgba(255,255,255,0.55);
-    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,0.7);
-    padding:2rem; border-radius:1.5rem;
-    transition:all 0.35s ease; display:block;
-    box-shadow:0 4px 16px rgba(100,149,237,0.07);
+    background:rgba(255,255,255,0.42);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,0.68);
+    padding:1.75rem 1.5rem; border-radius:1.5rem;
+    transition:all 0.3s ease; display:flex; flex-direction:column; gap:0.75rem;
+    box-shadow:0 2px 16px rgba(100,149,237,0.07), inset 0 1px 0 rgba(255,255,255,0.9);
   }
-  .home-card:hover { background:rgba(255,255,255,0.75); box-shadow:0 16px 40px rgba(100,149,237,0.12); transform:translateY(-3px); }
-  .home-card:active { transform:scale(0.97) translateY(0); transition:all 0.12s ease; }
+  .home-card:hover { background:rgba(255,255,255,0.62); box-shadow:0 14px 36px rgba(100,149,237,0.13); transform:translateY(-3px); }
+  .home-card:active { transform:scale(0.97); transition:all 0.1s ease; }
   .home-card-icon {
-    width:42px; height:42px;
-    background:rgba(239,246,255,0.8); border-radius:50%;
+    width:40px; height:40px;
+    background:rgba(239,246,255,0.85); border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    color:#6495ED; margin-bottom:1rem;
-    transition:transform 0.35s ease;
+    color:#6495ED;
+    transition:transform 0.3s ease;
   }
   .home-card:hover .home-card-icon { transform:scale(1.12); }
   .home-card h3 {
     font-family:'Playfair Display',Georgia,serif;
-    font-size:1.15rem; font-weight:700;
-    color:#334155; margin-bottom:0.6rem;
+    font-size:1.1rem; font-weight:700;
+    color:#334155;
   }
   .home-card p { font-size:0.82rem; color:#64748b; line-height:1.75; font-weight:300; }
 
   /* Quote */
-  .home-quote { text-align:center; padding:2.5rem 0; opacity:0.65; }
+  .home-quote { text-align:center; padding:2rem 0; opacity:0.6; }
   .home-quote-text {
     font-family:'Playfair Display',Georgia,serif;
     font-style:italic; color:#94a3b8; font-size:0.9rem; letter-spacing:0.02em;
   }
 
-  @media (max-width:560px) {
+  @media (max-width:480px) {
+    .hero-btns { grid-template-columns:1fr 1fr; gap:0.65rem; }
+    .btn-primary-hero, .btn-ghost-hero { font-size:0.88rem; padding:0.9rem 0.6rem; }
     .home-cards { grid-template-columns:1fr; }
-    .hero-wrap { min-height:55vh; }
-    .btn-primary-hero, .btn-ghost-hero { padding:0.9rem 1.8rem; font-size:0.95rem; }
+    .hero-sub { font-size:0.97rem; }
   }
 </style>

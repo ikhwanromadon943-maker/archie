@@ -27,7 +27,7 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
 
   <main><slot /></main>
 
-  <footer class="site-footer">&copy; {new Date().getFullYear()} Dandi</footer>
+  <footer class="site-footer">© {new Date().getFullYear()} Dandi</footer>
 
   <div class="tab-bar-outer">
     <nav class="tab-bar">
@@ -74,40 +74,46 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
     </svg>`;
 
     const PALETTES = [
-      ['#b8d0f4','#9abde8'],['#c2d8f6','#a8c8ec'],
-      ['#bdd4f5','#9ec0ea'],['#ccdaf7','#b2c9ef'],['#d4e5fb','#b8d2f2'],
+      ['#b8d0f4','#9abde8'],
+      ['#c2d8f6','#a8c8ec'],
+      ['#bdd4f5','#9ec0ea'],
+      ['#ccdaf7','#b2c9ef'],
+      ['#a8c4f0','#88acde'],
     ];
 
     const container = document.getElementById('flowers')!;
-    let activeCount = 0;
-    const MAX_ACTIVE = 45;
+    let activeFlowers = 0;
+    const MAX_FLOWERS = 50;
 
     function spawnFlower() {
-      if (activeCount >= MAX_ACTIVE) return;
-      activeCount++;
+      if (activeFlowers >= MAX_FLOWERS) return;
+      activeFlowers++;
+
       const el = document.createElement('div');
       el.className = 'petal';
-      const isFlower = Math.random() > 0.35;
-      const size = isFlower ? 16 + Math.random() * 18 : 8 + Math.random() * 10;
-      const pal  = PALETTES[Math.floor(Math.random() * PALETTES.length)];
-      const side = Math.random();
+      const isFlower = Math.random() > 0.3;
+      const size     = isFlower ? 16 + Math.random() * 18 : 8 + Math.random() * 9;
+      const pal      = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+      const side     = Math.random();
       let x: number;
-      if (side < 0.60)      x = 58 + Math.random() * 40;
-      else if (side < 0.82) x = 1  + Math.random() * 20;
-      else                  x = 22 + Math.random() * 35;
-      const dur   = 6 + Math.random() * 6;
-      const delay = Math.random() * 0.6;
-      const dx    = (Math.random() - 0.5) * 70;
+      if (side < 0.55)      x = 58 + Math.random() * 40;
+      else if (side < 0.78) x = 1  + Math.random() * 20;
+      else                  x = 20 + Math.random() * 36;
+
+      const dur   = 7 + Math.random() * 7;
+      const delay = Math.random() * 0.8;
+      const dx    = (Math.random() - 0.5) * 90;
       const rot   = Math.random() * 360;
-      el.style.cssText = `left:${x}%;top:-60px;width:${size}px;height:${size}px;--dx:${dx}px;--rot:${rot}deg;animation:floatPetal ${dur}s ${delay}s linear forwards`;
+
+      el.style.cssText = `left:${x}%;top:-55px;width:${size}px;height:${size}px;--dx:${dx}px;--rot:${rot}deg;animation:floatPetal ${dur}s ${delay}s linear forwards`;
       el.innerHTML = isFlower ? FLOWER(pal[0], pal[1]) : PETAL(pal[0]);
       container.appendChild(el);
-      setTimeout(() => { el.remove(); activeCount--; }, (dur + delay + 0.5) * 1000);
+      setTimeout(() => { el.remove(); activeFlowers--; }, (dur + delay + 0.5) * 1000);
     }
 
-    // Burst on load then steady rain
-    for (let i = 0; i < 30; i++) setTimeout(spawnFlower, i * 80);
-    setInterval(spawnFlower, 380);
+    // Burst on load then steady
+    for (let i = 0; i < 30; i++) setTimeout(spawnFlower, i * 100);
+    setInterval(spawnFlower, 480);
   </script>
 
 </body>

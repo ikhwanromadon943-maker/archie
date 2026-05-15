@@ -22,40 +22,73 @@ import Base from '../../layouts/Base.astro';
 
 </Base>
 
-
 <script>
   import { supabase } from '../../lib/supabase';
 
   const LS_KEY = 'liked_notes_v2';
-  const getLiked = (): Set<string> => {
-    try { return new Set(JSON.parse(localStorage.getItem(LS_KEY)||'[]')); }
-    catch { return new Set(); }
+  
+  // FIXED: Hapus TypeScript annotations
+  const getLiked = () => {
+    try { 
+      return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); 
+    } catch { 
+      return new Set(); 
+    }
   };
-  const saveLiked = (s: Set<string>) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
-  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  
+  const saveLiked = (s) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
+  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // FIXED: Escape HTML to prevent XSS
+  const escapeHtml = (str) => {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  };
 
   async function render() {
-    const list    = document.getElementById('notes-list')!;
-    const loading = document.getElementById('loading')!;
-    const empty   = document.getElementById('empty-state')!;
+    // FIXED: Safety checks - hapus non-null assertion
+    const list = document.getElementById('notes-list');
+    const loading = document.getElementById('loading');
+    const empty = document.getElementById('empty-state');
+    
+    if (!list || !loading || !empty) return;
 
     const { data: notes, error } = await supabase
-      .from('notes').select('*').order('created_at',{ascending:false});
+      .from('notes')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     loading.style.display = 'none';
-    if (error) { list.innerHTML=`<p class="err-msg">[error] ${error.message}</p>`; return; }
-    if (!notes?.length) { empty.style.display='block'; return; }
+    
+    if (error) {
+      list.innerHTML = `<p class="err-msg">[error] ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+    
+    if (!notes || notes.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
 
     const liked = getLiked();
 
-    notes.forEach((note: any, i: number) => {
-      const isLiked  = liked.has(note.id);
-      const hFill    = isLiked ? '#ef4444' : 'none';
-      const hStroke  = isLiked ? '#ef4444' : 'currentColor';
+    notes.forEach((note, i) => {
+      const isLiked = liked.has(note.id);
+      const hFill = isLiked ? '#ef4444' : 'none';
+      const hStroke = isLiked ? '#ef4444' : 'currentColor';
+      
+      const escapedTitle = note.title ? escapeHtml(note.title) : '';
+      const escapedContent = note.content ? escapeHtml(note.content).replace(/\n/g, '<br>') : '';
+      const escapedImageUrl = note.image_url ? escapeHtml(note.image_url) : '';
 
       const el = document.createElement('article');
       el.className = 'note-card';
-      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i*0.07}s forwards`;
+      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i * 0.07}s forwards`;
 
       el.innerHTML = `
         <div class="note-card-body">
@@ -71,11 +104,11 @@ import Base from '../../layouts/Base.astro';
               </svg>
             </div>
           </div>
-          ${note.title ? `<h2 class="note-title">${note.title}</h2>` : ''}
-          ${note.image_url ? `<img src="${note.image_url}" alt="" class="note-img" loading="lazy"/>` : ''}
-          <p class="note-body">${note.content.replace(/\n/g,'<br>')}</p>
+          ${note.title ? `<h2 class="note-title">${escapedTitle}</h2>` : ''}
+          ${note.image_url ? `<img src="${escapedImageUrl}" alt="" class="note-img" loading="lazy"/>` : ''}
+          <p class="note-body">${escapedContent}</p>
           <div class="note-footer">
-            <button class="note-like${isLiked?' liked':''}" data-id="${note.id}" data-liked="${isLiked}" aria-label="Like">
+            <button class="note-like${isLiked ? ' liked' : ''}" data-id="${note.id}" data-liked="${isLiked}" aria-label="Like">
               <svg class="heart-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                 fill="${hFill}" stroke="${hStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -85,27 +118,42 @@ import Base from '../../layouts/Base.astro';
           </div>
         </div>`;
 
-      el.querySelector<HTMLButtonElement>('.note-like')!.addEventListener('click', async function() {
-        const id       = this.dataset.id!;
-        const wasLiked = this.dataset.liked === 'true';
-        const liked    = getLiked();
-        const lc       = this.querySelector('.lc')!;
-        const svg      = this.querySelector('svg')!;
-        const cur      = parseInt(lc.textContent || '0');
+      // FIXED: Safety check untuk like button
+      const likeBtn = el.querySelector('.note-like');
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          
+          const wasLiked = this.getAttribute('data-liked') === 'true';
+          const likedSet = getLiked();
+          const lc = this.querySelector('.lc');
+          const svg = this.querySelector('svg');
+          
+          if (!lc || !svg) return;
+          
+          const cur = parseInt(lc.textContent || '0');
 
-        if (wasLiked) {
-          liked.delete(id); this.dataset.liked='false'; this.classList.remove('liked');
-          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
-          lc.textContent = String(Math.max(0, cur - 1));
-          await supabase.rpc('decrement_likes',{table_name:'notes',row_id:id});
-        } else {
-          liked.add(id); this.dataset.liked='true'; this.classList.add('liked');
-          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
-          lc.textContent = String(cur + 1);
-          await supabase.rpc('increment_likes',{table_name:'notes',row_id:id});
-        }
-        saveLiked(liked);
-      });
+          if (wasLiked) {
+            likedSet.delete(id);
+            this.setAttribute('data-liked', 'false');
+            this.classList.remove('liked');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            lc.textContent = String(Math.max(0, cur - 1));
+            await supabase.rpc('decrement_likes', { table_name: 'notes', row_id: id });
+          } else {
+            likedSet.add(id);
+            this.setAttribute('data-liked', 'true');
+            this.classList.add('liked');
+            svg.setAttribute('fill', '#ef4444');
+            svg.setAttribute('stroke', '#ef4444');
+            lc.textContent = String(cur + 1);
+            await supabase.rpc('increment_likes', { table_name: 'notes', row_id: id });
+          }
+          saveLiked(likedSet);
+        });
+      }
 
       list.appendChild(el);
     });
@@ -113,3 +161,176 @@ import Base from '../../layouts/Base.astro';
 
   render();
 </script>
+
+<style is:global>
+  /* FIXED: Gunakan is:global agar CSS apply ke innerHTML elements */
+  
+  .notes-hdr {
+    margin-bottom: 1.75rem;
+  }
+  
+  .notes-hdr h1 {
+    font-family: var(--font-serif);
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: -0.02em;
+  }
+  
+  .notes-hdr p {
+    color: var(--text-mute);
+    font-size: 0.82rem;
+    margin-top: 0.3rem;
+  }
+
+  .notes-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* FIXED: Background lebih transparan */
+  .note-card {
+    background: rgba(255, 255, 255, 0.38);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 22px;
+    box-shadow: 0 4px 20px rgba(100, 149, 237, 0.09), 0 1px 4px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .note-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 40px rgba(100, 149, 237, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .note-card-body {
+    padding: 1.4rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .note-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.3);
+  }
+  
+  .note-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+  }
+  
+  .note-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--blue);
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+  
+  .note-date {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.78rem;
+    color: var(--text-mute);
+    letter-spacing: 0.01em;
+  }
+  
+  .note-edit-icon {
+    color: #cbd5e1;
+    transition: color var(--ease);
+  }
+  
+  .note-card:hover .note-edit-icon {
+    color: var(--blue);
+  }
+
+  .note-title {
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+    transition: color var(--ease);
+    letter-spacing: -0.01em;
+  }
+  
+  .note-card:hover .note-title {
+    color: var(--blue);
+  }
+  
+  .note-img {
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+    border-radius: 14px;
+    margin: 0.2rem 0;
+    display: block;
+  }
+  
+  .note-body {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    line-height: 1.85;
+    white-space: pre-wrap;
+  }
+
+  .note-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.2rem;
+  }
+  
+  .note-like {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-mute);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    transition: all var(--ease);
+  }
+  
+  .note-like:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.07);
+  }
+  
+  .note-like.liked {
+    color: #ef4444;
+  }
+  
+  .note-like.liked svg {
+    fill: #ef4444;
+    stroke: #ef4444;
+  }
+  
+  .heart-icon {
+    transition: transform var(--ease);
+  }
+  
+  .note-like:hover .heart-icon {
+    transform: scale(1.18);
+  }
+  
+  .err-msg {
+    color: var(--red);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 2rem;
+    text-align: center;
+  }
+</style>

@@ -125,309 +125,200 @@ import Base from '../../layouts/Base.astro';
 
   if (sessionStorage.getItem('admin_authed') !== '1') window.location.href = '/admin/login';
 
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem('admin_authed');
-      window.location.href = '/admin/login';
-    });
-  }
+  document.getElementById('logout-btn')!.addEventListener('click',()=>{
+    sessionStorage.removeItem('admin_authed');
+    window.location.href = '/admin/login';
+  });
 
-  // Tabs
+  // ── Tabs ──
   document.querySelectorAll('.admin-tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    tab.addEventListener('click', function(this: HTMLButtonElement) {
+      document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll<HTMLElement>('.tab-panel').forEach(p=>p.style.display='none');
       this.classList.add('active');
-      const t = this.getAttribute('data-tab');
-      if (t) {
-        const panel = document.getElementById(`tab-${t}`);
-        if (panel) panel.style.display = 'block';
-        renderTab(t);
-      }
+      const t = this.dataset.tab!;
+      document.getElementById(`tab-${t}`)!.style.display='block';
+      renderTab(t);
     });
   });
 
-  const uid = () => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  };
-  
-  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-  const clear = (...ids) => ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const msg = (id, text, ok = true) => {
-    const el = document.getElementById(id);
-    if (!el) return;
+  // ── Helpers ──
+  const uid = () => crypto.randomUUID();
+  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value.trim();
+  const clear = (...ids: string[]) => ids.forEach(id => { (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value=''; });
+  const msg = (id: string, text: string, ok=true) => {
+    const el = document.getElementById(id)!;
     el.textContent = text;
     el.style.color = ok ? 'var(--green)' : 'var(--red)';
-    setTimeout(() => { if (el) el.textContent = ''; }, 3000);
+    setTimeout(()=>el.textContent='',3000);
   };
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-  }
-
-  function makeCard(title, sub, onDelete) {
+  function makeCard(title: string, sub: string, onDelete: ()=>Promise<void>) {
     const el = document.createElement('div');
     el.className = 'admin-card';
     el.innerHTML = `
       <div class="admin-card-header">
-        <span class="admin-card-title">${escapeHtml(title)}</span>
+        <span class="admin-card-title">${title}</span>
         <button class="delete-btn">Delete</button>
       </div>
       <div class="admin-card-body" style="padding:0.6rem 1.25rem">
-        <p style="font-size:0.8rem;color:var(--text-mute)">${escapeHtml(sub)}</p>
+        <p style="font-size:0.8rem;color:var(--text-mute)">${sub}</p>
       </div>`;
-    const deleteBtn = el.querySelector('.delete-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', async () => {
-        if (confirm(`Delete "${title}"?`)) { await onDelete(); el.remove(); }
-      });
-    }
+    el.querySelector('.delete-btn')!.addEventListener('click', async () => {
+      if (confirm(`Delete "${title}"?`)) { await onDelete(); el.remove(); }
+    });
     return el;
   }
 
   // ── NOTES ──
   async function renderNotes() {
-    const list = document.getElementById('notes-admin-list');
-    if (!list) return;
+    const list = document.getElementById('notes-admin-list')!;
     list.innerHTML = '';
-    try {
-      const { data, error } = await supabase.from('notes').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No journal entries yet.</p></div>';
-        return;
-      }
-      data.forEach((n) => {
-        list.appendChild(makeCard(
-          n.title || '(untitled)',
-          `${fdate(n.created_at)} · ${(n.content || '').slice(0, 60)}...`,
-          async () => { await supabase.from('notes').delete().eq('id', n.id); }
-        ));
-      });
-    } catch (err) {
-      console.error(err);
-      list.innerHTML = '<div class="err-msg">Failed to load notes.</div>';
-    }
-  }
-
-  const addNoteBtn = document.getElementById('add-note-btn');
-  if (addNoteBtn) {
-    addNoteBtn.addEventListener('click', async () => {
-      const title = val('note-title');
-      const content = val('note-content');
-      const image_url = val('note-image');
-      if (!content) return msg('note-msg', 'Content required.', false);
-      const { error } = await supabase.from('notes').insert({ title: title || null, content, image_url: image_url || null });
-      if (error) return msg('note-msg', error.message, false);
-      clear('note-title', 'note-content', 'note-image');
-      msg('note-msg', 'Entry saved!');
-      renderNotes();
+    const { data } = await supabase.from('notes').select('*').order('created_at',{ascending:false});
+    data?.forEach((n: any) => {
+      list.appendChild(makeCard(
+        n.title || '(untitled)',
+        `${fdate(n.created_at)} · ${n.content.slice(0,60)}...`,
+        async () => { await supabase.from('notes').delete().eq('id',n.id); }
+      ));
     });
   }
+
+  document.getElementById('add-note-btn')!.addEventListener('click', async () => {
+    const title = val('note-title'); const content = val('note-content'); const image_url = val('note-image');
+    if (!content) return msg('note-msg','Content required.',false);
+    const { error } = await supabase.from('notes').insert({ title:title||null, content, image_url:image_url||null });
+    if (error) return msg('note-msg',error.message,false);
+    clear('note-title','note-content','note-image');
+    msg('note-msg','Entry saved!');
+    renderNotes();
+  });
 
   // ── GALLERY ──
   async function renderGalleryAdmin() {
-    const list = document.getElementById('gallery-admin-list');
-    if (!list) return;
+    const list = document.getElementById('gallery-admin-list')!;
     list.innerHTML = '';
-    try {
-      const { data, error } = await supabase.from('gallery').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No photos yet.</p></div>';
-        return;
-      }
-      data.forEach((g) => {
-        list.appendChild(makeCard(
-          g.title || 'Untitled Photo',
-          `${fdate(g.created_at)} · ${(g.url || '').slice(0, 50)}`,
-          async () => { await supabase.from('gallery').delete().eq('id', g.id); }
-        ));
-      });
-    } catch (err) {
-      console.error(err);
-      list.innerHTML = '<div class="err-msg">Failed to load gallery.</div>';
-    }
-  }
-
-  const addGalleryBtn = document.getElementById('add-gallery-btn');
-  if (addGalleryBtn) {
-    addGalleryBtn.addEventListener('click', async () => {
-      const url = val('gallery-url');
-      const title = val('gallery-title');
-      const caption = val('gallery-caption');
-      if (!url) return msg('gallery-msg', 'URL required.', false);
-      const { error } = await supabase.from('gallery').insert({ url, title: title || null, caption: caption || null });
-      if (error) return msg('gallery-msg', error.message, false);
-      clear('gallery-url', 'gallery-title', 'gallery-caption');
-      msg('gallery-msg', 'Photo added!');
-      renderGalleryAdmin();
+    const { data } = await supabase.from('gallery').select('*').order('created_at',{ascending:false});
+    data?.forEach((g: any) => {
+      list.appendChild(makeCard(
+        g.title || 'Untitled Photo',
+        `${fdate(g.created_at)} · ${g.url.slice(0,50)}`,
+        async () => { await supabase.from('gallery').delete().eq('id',g.id); }
+      ));
     });
   }
+
+  document.getElementById('add-gallery-btn')!.addEventListener('click', async () => {
+    const url = val('gallery-url'); const title = val('gallery-title'); const caption = val('gallery-caption');
+    if (!url) return msg('gallery-msg','URL required.',false);
+    const { error } = await supabase.from('gallery').insert({ url, title:title||null, caption:caption||null });
+    if (error) return msg('gallery-msg',error.message,false);
+    clear('gallery-url','gallery-title','gallery-caption');
+    msg('gallery-msg','Photo added!');
+    renderGalleryAdmin();
+  });
 
   // ── SNIPPETS ──
   async function renderSnippetsAdmin() {
-    const list = document.getElementById('snippets-admin-list');
-    if (!list) return;
+    const list = document.getElementById('snippets-admin-list')!;
     list.innerHTML = '';
-    try {
-      const { data, error } = await supabase.from('snippets').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No snippets yet.</p></div>';
-        return;
-      }
-      data.forEach((s) => {
-        list.appendChild(makeCard(
-          s.title,
-          `[${s.language}] ${s.description || ''} · ${fdate(s.created_at)}`,
-          async () => { await supabase.from('snippets').delete().eq('id', s.id); }
-        ));
-      });
-    } catch (err) {
-      console.error(err);
-      list.innerHTML = '<div class="err-msg">Failed to load snippets.</div>';
-    }
-  }
-
-  const addSnipBtn = document.getElementById('add-snip-btn');
-  if (addSnipBtn) {
-    addSnipBtn.addEventListener('click', async () => {
-      const title = val('snip-title');
-      const description = val('snip-desc');
-      const langEl = document.getElementById('snip-lang');
-      const language = langEl ? langEl.value : 'other';
-      const code = val('snip-code');
-      if (!title || !code) return msg('snip-msg', 'Title & code required.', false);
-      const { error } = await supabase.from('snippets').insert({ title, description: description || null, language, code });
-      if (error) return msg('snip-msg', error.message, false);
-      clear('snip-title', 'snip-desc', 'snip-code');
-      msg('snip-msg', 'Snippet saved!');
-      renderSnippetsAdmin();
+    const { data } = await supabase.from('snippets').select('*').order('created_at',{ascending:false});
+    data?.forEach((s: any) => {
+      list.appendChild(makeCard(
+        s.title,
+        `[${s.language}] ${s.description||''} · ${fdate(s.created_at)}`,
+        async () => { await supabase.from('snippets').delete().eq('id',s.id); }
+      ));
     });
   }
+
+  document.getElementById('add-snip-btn')!.addEventListener('click', async () => {
+    const title = val('snip-title'); const description = val('snip-desc');
+    const language = (document.getElementById('snip-lang') as HTMLSelectElement).value;
+    const code = val('snip-code');
+    if (!title || !code) return msg('snip-msg','Title & code required.',false);
+    const { error } = await supabase.from('snippets').insert({ title, description:description||null, language, code });
+    if (error) return msg('snip-msg',error.message,false);
+    clear('snip-title','snip-desc','snip-code');
+    msg('snip-msg','Snippet saved!');
+    renderSnippetsAdmin();
+  });
 
   // ── MUSIC ──
   async function renderMusicAdmin() {
-    const list = document.getElementById('music-admin-list');
-    if (!list) return;
+    const list = document.getElementById('music-admin-list')!;
     list.innerHTML = '';
-    try {
-      const { data, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No tracks yet.</p></div>';
-        return;
-      }
-      data.forEach((m) => {
-        list.appendChild(makeCard(
-          m.title,
-          `${m.artist}${m.duration ? ' · ' + m.duration : ''}`,
-          async () => { await supabase.from('music').delete().eq('id', m.id); }
-        ));
-      });
-    } catch (err) {
-      console.error(err);
-      list.innerHTML = '<div class="err-msg">Failed to load music.</div>';
-    }
-  }
-
-  const addMusicBtn = document.getElementById('add-music-btn');
-  if (addMusicBtn) {
-    addMusicBtn.addEventListener('click', async () => {
-      const title = val('music-title');
-      const artist = val('music-artist');
-      const duration = val('music-duration');
-      const url = val('music-url');
-      const thumbnail = val('music-thumb');
-      if (!title || !artist) return msg('music-msg', 'Title & artist required.', false);
-      const { error } = await supabase.from('music').insert({ title, artist, duration: duration || null, url: url || null, thumbnail: thumbnail || null });
-      if (error) return msg('music-msg', error.message, false);
-      clear('music-title', 'music-artist', 'music-duration', 'music-url', 'music-thumb');
-      msg('music-msg', 'Track added!');
-      renderMusicAdmin();
+    const { data } = await supabase.from('music').select('*').order('added_at',{ascending:false});
+    data?.forEach((m: any) => {
+      list.appendChild(makeCard(
+        m.title,
+        `${m.artist}${m.duration ? ' · '+m.duration : ''}`,
+        async () => { await supabase.from('music').delete().eq('id',m.id); }
+      ));
     });
   }
+
+  document.getElementById('add-music-btn')!.addEventListener('click', async () => {
+    const title = val('music-title'); const artist = val('music-artist');
+    const duration = val('music-duration'); const url = val('music-url'); const thumbnail = val('music-thumb');
+    if (!title || !artist) return msg('music-msg','Title & artist required.',false);
+    const { error } = await supabase.from('music').insert({ title, artist, duration:duration||null, url:url||null, thumbnail:thumbnail||null });
+    if (error) return msg('music-msg',error.message,false);
+    clear('music-title','music-artist','music-duration','music-url','music-thumb');
+    msg('music-msg','Track added!');
+    renderMusicAdmin();
+  });
 
   // ── VAULT ──
   async function renderVaultAdmin() {
-    const list = document.getElementById('vault-admin-list');
-    if (!list) return;
+    const list = document.getElementById('vault-admin-list')!;
     list.innerHTML = '';
-    try {
-      const { data, error } = await supabase.from('vault').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No vault entries yet.</p></div>';
-        return;
-      }
-      data.forEach((v) => {
-        list.appendChild(makeCard(
-          v.title,
-          `${fdate(v.created_at)} · ${(v.content || '').slice(0, 60)}`,
-          async () => { await supabase.from('vault').delete().eq('id', v.id); }
-        ));
-      });
-    } catch (err) {
-      console.error(err);
-      list.innerHTML = '<div class="err-msg">Failed to load vault.</div>';
-    }
-  }
-
-  const addVaultBtn = document.getElementById('add-vault-btn');
-  if (addVaultBtn) {
-    addVaultBtn.addEventListener('click', async () => {
-      const title = val('vault-title');
-      const content = val('vault-content-inp');
-      if (!title || !content) return msg('vault-msg', 'Title & content required.', false);
-      const { error } = await supabase.from('vault').insert({ title, content });
-      if (error) return msg('vault-msg', error.message, false);
-      clear('vault-title', 'vault-content-inp');
-      msg('vault-msg', 'Saved to vault!');
-      renderVaultAdmin();
+    const { data } = await supabase.from('vault').select('*').order('created_at',{ascending:false});
+    data?.forEach((v: any) => {
+      list.appendChild(makeCard(
+        v.title,
+        `${fdate(v.created_at)} · ${v.content.slice(0,60)}`,
+        async () => { await supabase.from('vault').delete().eq('id',v.id); }
+      ));
     });
   }
+
+  document.getElementById('add-vault-btn')!.addEventListener('click', async () => {
+    const title = val('vault-title'); const content = val('vault-content-inp');
+    if (!title || !content) return msg('vault-msg','Title & content required.',false);
+    const { error } = await supabase.from('vault').insert({ title, content });
+    if (error) return msg('vault-msg',error.message,false);
+    clear('vault-title','vault-content-inp');
+    msg('vault-msg','Saved to vault!');
+    renderVaultAdmin();
+  });
 
   // ── SETTINGS ──
-  const changePassBtn = document.getElementById('change-pass-btn');
-  if (changePassBtn) {
-    changePassBtn.addEventListener('click', async () => {
-      const npEl = document.getElementById('new-pass');
-      const cpEl = document.getElementById('confirm-pass');
-      const pmsg = document.getElementById('pass-msg');
-      if (!npEl || !cpEl || !pmsg) return;
-      const np = npEl.value;
-      const cp = cpEl.value;
-      if (!np) { pmsg.style.color = 'var(--red)'; pmsg.textContent = 'Enter a passphrase.'; return; }
-      if (np !== cp) { pmsg.style.color = 'var(--red)'; pmsg.textContent = 'Passphrases do not match.'; return; }
-      const { error } = await supabase.from('settings').update({ value: np, updated_at: new Date().toISOString() }).eq('key', 'admin_pass');
-      if (error) { pmsg.style.color = 'var(--red)'; pmsg.textContent = error.message; return; }
-      pmsg.style.color = 'var(--green)'; pmsg.textContent = 'Passphrase updated! Re-logging in...';
-      setTimeout(() => { sessionStorage.removeItem('admin_authed'); window.location.href = '/admin/login'; }, 1500);
-    });
-  }
+  document.getElementById('change-pass-btn')!.addEventListener('click', async () => {
+    const np = (document.getElementById('new-pass') as HTMLInputElement).value;
+    const cp = (document.getElementById('confirm-pass') as HTMLInputElement).value;
+    const pmsg = document.getElementById('pass-msg')!;
+    if (!np) { pmsg.style.color='var(--red)'; pmsg.textContent='Enter a passphrase.'; return; }
+    if (np !== cp) { pmsg.style.color='var(--red)'; pmsg.textContent='Passphrases do not match.'; return; }
+    const { error } = await supabase.from('settings').update({ value: np, updated_at: new Date().toISOString() }).eq('key','admin_pass');
+    if (error) { pmsg.style.color='var(--red)'; pmsg.textContent=error.message; return; }
+    pmsg.style.color='var(--green)'; pmsg.textContent='Passphrase updated! Re-logging in...';
+    setTimeout(()=>{ sessionStorage.removeItem('admin_authed'); window.location.href='/admin/login'; }, 1500);
+  });
 
-  function renderTab(tab) {
-    const map = {
-      notes: renderNotes,
-      gallery: renderGalleryAdmin,
-      snippets: renderSnippetsAdmin,
-      music: renderMusicAdmin,
-      vault: renderVaultAdmin
+  function renderTab(tab: string) {
+    const map: Record<string,(()=>Promise<void>)> = {
+      notes: renderNotes, gallery: renderGalleryAdmin,
+      snippets: renderSnippetsAdmin, music: renderMusicAdmin, vault: renderVaultAdmin
     };
-    if (map[tab]) map[tab]();
+    map[tab]?.();
   }
 
   renderNotes();
 </script>
 
-<style is:global>
-  .status-badge { font-family: var(--font-mono); font-size: 0.72rem; color: var(--green); }
-  .save-msg { font-family: var(--font-mono); font-size: 0.75rem; margin-left: 0.75rem; }
-  .empty-state { text-align: center; padding: 3rem 0; color: var(--text-mute); }
-  .err-msg { color: var(--red); padding: 2rem; text-align: center; font-family: var(--font-mono); font-size: 0.8rem; }
+<style>
+  .status-badge { font-family:var(--font-mono);font-size:0.72rem;color:var(--green); }
+  .save-msg { font-family:var(--font-mono);font-size:0.75rem;margin-left:0.75rem; }
 </style>

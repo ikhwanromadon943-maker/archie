@@ -4,7 +4,7 @@ import Base from '../../layouts/Base.astro';
 <Base title="Music" description="Search and discover music.">
 
   <div class="music-hero">
-    <h1 class="music-big-title">ARCHIE<span class="music-dot">.</span>MUSIC</h1>
+    <h1 class="music-big-title">MYSITE<span class="music-dot">.</span>MUSIC</h1>
     <div class="music-search-row">
       <div class="music-search-wrap">
         <div class="music-search-icon">
@@ -22,17 +22,6 @@ import Base from '../../layouts/Base.astro';
     </div>
   </div>
 
-  <!-- Visualizer bar - muncul saat track dipilih -->
-  <div class="music-visualizer" id="music-viz" style="display:none">
-    <div class="viz-bars">
-      <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
-    </div>
-    <div class="viz-text" id="viz-track-name">—</div>
-  </div>
-
   <div class="loading-state" id="loading"><span class="loader"></span></div>
   <div id="music-list"></div>
   <div class="empty-state" id="empty-state" style="display:none">
@@ -41,7 +30,7 @@ import Base from '../../layouts/Base.astro';
         <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
       </svg>
     </div>
-    <h3>START BY SEARCHING A SONG</h3>
+    <h3 class="music-empty-label">START BY SEARCHING A SONG</h3>
     <p>Or add tracks via the admin panel.</p>
   </div>
 
@@ -49,19 +38,11 @@ import Base from '../../layouts/Base.astro';
 
 <script>
   import { supabase } from '../../lib/supabase';
-  let allTracks = [];
-  let activeCard = null;
-
-  const escapeHtml = (str) => {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, (m) => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-  };
+  let allTracks: any[] = [];
 
   async function loadTracks() {
-    const loading = document.getElementById('loading');
-    const empty = document.getElementById('empty-state');
-    if (!loading || !empty) return;
-
+    const loading = document.getElementById('loading')!;
+    const empty = document.getElementById('empty-state')!;
     const { data: items, error } = await supabase.from('music').select('*').order('added_at',{ascending:false});
     loading.style.display = 'none';
     if (error || !items?.length) { empty.style.display='block'; return; }
@@ -69,83 +50,128 @@ import Base from '../../layouts/Base.astro';
     renderTracks(items);
   }
 
-  function renderTracks(items) {
-    const list = document.getElementById('music-list');
-    const empty = document.getElementById('empty-state');
-    if (!list || !empty) return;
-
+  function renderTracks(items: any[]) {
+    const list = document.getElementById('music-list')!;
+    const empty = document.getElementById('empty-state')!;
     list.innerHTML = '';
     if (!items.length) { empty.style.display='block'; return; }
     empty.style.display = 'none';
 
-    items.forEach((item, i) => {
-      const escapedTitle = escapeHtml(item.title);
-      const escapedArtist = escapeHtml(item.artist);
-      const escapedThumb = item.thumbnail ? escapeHtml(item.thumbnail) : '';
-      const escapedUrl = item.url ? escapeHtml(item.url) : '';
-
+    items.forEach((item: any, i: number) => {
       const card = document.createElement('div');
       card.className = 'music-card';
       card.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.05}s forwards`;
       card.innerHTML = `
         ${item.thumbnail
-          ? `<img class="music-thumb" src="${escapedThumb}" alt="${escapedTitle}" loading="lazy"/>`
-          : `<div class="music-thumb-ph">
+          ? `<img class="music-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy"/>`
+          : `<div class="music-thumb music-thumb-ph">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
               </svg>
             </div>`}
         <div class="music-info">
-          <div class="music-name">${escapedTitle}</div>
-          <div class="music-artist">${escapedArtist}</div>
+          <div class="music-name">${item.title}</div>
+          <div class="music-artist">${item.artist}</div>
         </div>
         <div class="music-duration">${item.duration||'—'}</div>
-        ${item.url ? `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="music-link" title="Open" onclick="event.stopPropagation()">
+        ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener" class="music-link" title="Open">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
         </a>` : ''}`;
-
-      card.addEventListener('click', () => {
-        const viz = document.getElementById('music-viz');
-        const vizTrack = document.getElementById('viz-track-name');
-        if (!viz || !vizTrack) return;
-
-        if (activeCard === card) {
-          card.classList.remove('playing');
-          activeCard = null;
-          viz.style.display = 'none';
-        } else {
-          if (activeCard) activeCard.classList.remove('playing');
-          card.classList.add('playing');
-          activeCard = card;
-          vizTrack.textContent = `${item.title} — ${item.artist}`;
-          viz.style.display = 'flex';
-        }
-      });
-
       list.appendChild(card);
     });
   }
 
   loadTracks();
 
-  const searchInput = document.getElementById('music-search');
-  const searchBtn = document.getElementById('music-search-btn');
-
+  const searchInput = document.getElementById('music-search') as HTMLInputElement;
   const doSearch = () => {
-    if (!searchInput) return;
     const q = searchInput.value.toLowerCase().trim();
-    const filtered = !q ? allTracks : allTracks.filter(t => 
-      t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-    );
-    renderTracks(filtered);
+    if (!q) { renderTracks(allTracks); return; }
+    renderTracks(allTracks.filter((t: any) => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)));
   };
-
-  if (searchInput) {
-    searchInput.addEventListener('input', doSearch);
-    searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
-  }
-  if (searchBtn) searchBtn.addEventListener('click', doSearch);
+  searchInput.addEventListener('input', doSearch);
+  document.getElementById('music-search-btn')!.addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', (e) => { if (e.key==='Enter') doSearch(); });
 </script>
+
+<style>
+  .music-hero { text-align:center; padding:2rem 0 2.5rem; }
+
+  .music-big-title {
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:clamp(2rem,9vw,3.5rem);
+    font-weight:700; letter-spacing:-0.02em;
+    color:#1e293b; margin-bottom:2rem; line-height:1;
+  }
+  .music-dot { color:#6495ED; }
+
+  .music-search-row {
+    display:flex; gap:0.5rem; max-width:400px; margin:0 auto;
+  }
+  .music-search-wrap {
+    flex:1; position:relative;
+  }
+  .music-search-icon {
+    position:absolute; left:0.9rem; top:50%; transform:translateY(-50%);
+    color:#94a3b8; pointer-events:none; display:flex;
+  }
+  .music-search-input {
+    width:100%;
+    background:rgba(255,255,255,0.85);
+    border:1.5px solid #e2e8f0;
+    border-radius:999px;
+    padding:0.7rem 1rem 0.7rem 2.5rem;
+    font-size:0.875rem; color:#1e293b;
+    outline:none;
+    transition:border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  }
+  .music-search-input:focus {
+    border-color:#6495ED;
+    box-shadow:0 0 0 3px rgba(100,149,237,0.12);
+  }
+  .music-search-btn {
+    width:42px; height:42px; border-radius:50%;
+    background:#6495ED; color:#fff; border:none;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+    transition:background 0.2s ease, transform 0.2s ease;
+    box-shadow:0 4px 12px rgba(100,149,237,0.3);
+  }
+  .music-search-btn:hover { background:#5b89dc; transform:scale(1.05); }
+
+  .music-card {
+    display:flex; align-items:center; gap:0.85rem;
+    padding:0.85rem 0; border-bottom:1px solid rgba(226,232,240,0.7);
+    transition:opacity 0.2s ease; cursor:pointer;
+  }
+  .music-card:last-child { border-bottom:none; }
+  .music-card:hover { opacity:0.65; }
+
+  .music-thumb {
+    width:44px; height:44px; border-radius:8px;
+    object-fit:cover; flex-shrink:0; background:#f1f5f9;
+  }
+  .music-thumb-ph {
+    width:44px; height:44px; border-radius:8px; flex-shrink:0;
+    background:#eff6ff; display:flex; align-items:center; justify-content:center;
+    color:#6495ED; opacity:0.6;
+  }
+  .music-info { flex:1; min-width:0; }
+  .music-name { font-size:0.875rem; font-weight:500; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .music-artist { font-size:0.72rem; color:#94a3b8; margin-top:0.1rem; }
+  .music-duration { font-family:monospace; font-size:0.7rem; color:#94a3b8; flex-shrink:0; }
+  .music-link {
+    display:flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:8px;
+    border:1px solid #e2e8f0; color:#6495ED;
+    transition:all 0.2s ease; flex-shrink:0;
+  }
+  .music-link:hover { background:#eff6ff; border-color:#6495ED; }
+
+  .empty-icon { display:flex; justify-content:center; color:#6495ED; opacity:0.2; margin-bottom:1rem; }
+  .music-empty-label { font-family:monospace; font-size:0.72rem; letter-spacing:0.12em; font-weight:500; }
+</style>

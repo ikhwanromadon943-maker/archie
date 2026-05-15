@@ -6,24 +6,24 @@ import Base from '../layouts/Base.astro';
   <!-- Hero -->
   <div class="hero-wrap">
     <div class="hero-badge-wrap">
-      <span class="hero-badge">Personal Archive & Sanctuary</span>
+      <span class="hero-badge">Personal Archive &amp; Sanctuary</span>
     </div>
-    <h1 class="hero-title">MySite.</h1>
+    <h1 class="hero-title">Archie.</h1>
     <p class="hero-sub">
       A quiet space for things meant to endure.
-      Inspired by the spirit of <span class="hero-accent">Myosotis</span>—the Forget-Me-Not.
+      Inspired by the spirit of <span class="hero-accent">Myosotis</span>&mdash;the Forget-Me-Not.
       Here, fragments of time are gathered and kept safe from the current of oblivion.
     </p>
     <div class="hero-btns">
       <a href="/notes" class="btn-primary-hero">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
         </svg>
         Read Journal
       </a>
       <a href="/gallery" class="btn-ghost-hero">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
           <circle cx="8.5" cy="8.5" r="1.5"/>
           <polyline points="21 15 16 10 5 21"/>
@@ -36,7 +36,7 @@ import Base from '../layouts/Base.astro';
   <!-- Cards -->
   <div class="home-cards">
     <a href="/notes" class="home-card group">
-      <div class="home-card-icon group-hover:scale-110">
+      <div class="home-card-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 20h9"/>
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -46,7 +46,7 @@ import Base from '../layouts/Base.astro';
       <p>Fragments of thought and whispered narratives. A collection of words intended to anchor the fleeting nature of our days before they fade.</p>
     </a>
     <a href="/gallery" class="home-card group">
-      <div class="home-card-icon group-hover:scale-110">
+      <div class="home-card-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
@@ -58,7 +58,7 @@ import Base from '../layouts/Base.astro';
 
   <!-- Quote -->
   <div class="home-quote">
-    <p class="home-quote-text">"Do not forget me when I am silent."</p>
+    <p class="home-quote-text">&ldquo;Do not forget me when I am silent.&rdquo;</p>
   </div>
 
 </Base>
@@ -76,8 +76,9 @@ import Base from '../layouts/Base.astro';
     padding:0.35rem 1rem;
     border-radius:999px;
     border:1px solid rgba(100,149,237,0.3);
-    background:rgba(239,246,255,0.5);
-    backdrop-filter:blur(4px);
+    background:rgba(255,255,255,0.55);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
     color:#6495ED;
     font-size:0.65rem; font-weight:700;
     letter-spacing:0.2em; text-transform:uppercase;
@@ -100,50 +101,58 @@ import Base from '../layouts/Base.astro';
     display:flex; flex-wrap:wrap;
     gap:1rem; justify-content:center;
   }
-  .btn-primary-hero {
-    display:inline-flex; align-items:center; gap:0.5rem;
-    padding:0.85rem 2rem;
-    background:#6495ED; color:#fff;
-    border-radius:0.75rem; font-weight:500; font-size:0.9rem;
-    box-shadow:0 8px 24px rgba(100,149,237,0.3);
-    transition:all 0.3s ease;
-  }
-  .btn-primary-hero:hover { background:#5b89dc; transform:translateY(-2px); box-shadow:0 12px 28px rgba(100,149,237,0.4); }
-  .btn-ghost-hero {
-    display:inline-flex; align-items:center; gap:0.5rem;
-    padding:0.85rem 2rem;
-    background:rgba(255,255,255,0.6); backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,0.8);
-    color:#6495ED; border-radius:0.75rem; font-weight:500; font-size:0.9rem;
-    box-shadow:0 2px 8px rgba(0,0,0,0.04);
-    transition:all 0.3s ease;
-  }
-  .btn-ghost-hero:hover { background:#fff; border-color:rgba(100,149,237,0.3); transform:translateY(-2px); }
 
-  /* Cards */
+  /* Bigger buttons with smooth click animation */
+  .btn-primary-hero {
+    display:inline-flex; align-items:center; gap:0.6rem;
+    padding:1rem 2.25rem;
+    background:#6495ED; color:#fff;
+    border-radius:0.875rem; font-weight:600; font-size:1rem;
+    box-shadow:0 8px 24px rgba(100,149,237,0.35);
+    transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .btn-primary-hero:hover { background:#5b89dc; transform:translateY(-3px); box-shadow:0 14px 32px rgba(100,149,237,0.45); }
+  .btn-primary-hero:active { transform:scale(0.96) translateY(0); box-shadow:0 4px 12px rgba(100,149,237,0.25); transition:all 0.1s ease; }
+
+  .btn-ghost-hero {
+    display:inline-flex; align-items:center; gap:0.6rem;
+    padding:1rem 2.25rem;
+    background:rgba(255,255,255,0.65); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border:1.5px solid rgba(255,255,255,0.85);
+    color:#6495ED; border-radius:0.875rem; font-weight:600; font-size:1rem;
+    box-shadow:0 4px 16px rgba(0,0,0,0.05);
+    transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .btn-ghost-hero:hover { background:rgba(255,255,255,0.88); border-color:rgba(100,149,237,0.4); transform:translateY(-3px); box-shadow:0 10px 24px rgba(100,149,237,0.12); }
+  .btn-ghost-hero:active { transform:scale(0.96) translateY(0); transition:all 0.1s ease; }
+
+  /* Cards — glass morphism */
   .home-cards {
     display:grid; grid-template-columns:repeat(2,1fr);
-    gap:1.5rem; margin:2rem 0 3rem;
+    gap:1.25rem; margin:2rem 0 3rem;
   }
   .home-card {
-    background:rgba(255,255,255,0.4);
-    backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,0.5);
-    padding:2rem; border-radius:1.5rem;
-    transition:all 0.5s ease; display:block;
+    background:rgba(255,255,255,0.55);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.75);
+    padding:1.75rem 1.5rem; border-radius:1.5rem;
+    transition:all 0.3s ease; display:block;
+    box-shadow:0 4px 20px rgba(100,149,237,0.07);
   }
-  .home-card:hover { background:rgba(255,255,255,0.65); box-shadow:0 16px 40px rgba(100,149,237,0.08); }
+  .home-card:hover { background:rgba(255,255,255,0.72); box-shadow:0 16px 40px rgba(100,149,237,0.12); transform:translateY(-3px); }
+  .home-card:active { transform:scale(0.98); transition:all 0.1s ease; }
   .home-card-icon {
-    width:40px; height:40px;
+    width:42px; height:42px;
     background:#eff6ff; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     color:#6495ED; margin-bottom:1rem;
     transition:transform 0.3s ease;
   }
+  .home-card:hover .home-card-icon { transform:scale(1.12); }
   .home-card h3 {
     font-family:'Playfair Display',Georgia,serif;
-    font-size:1.2rem; font-weight:700;
-    color:#334155; margin-bottom:0.6rem;
+    font-size:1.15rem; font-weight:700;
+    color:#334155; margin-bottom:0.5rem;
   }
   .home-card p { font-size:0.82rem; color:#64748b; line-height:1.75; font-weight:300; }
 

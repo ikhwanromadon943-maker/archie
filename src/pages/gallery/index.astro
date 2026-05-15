@@ -25,55 +25,79 @@ import Base from '../../layouts/Base.astro';
   import { supabase } from '../../lib/supabase';
 
   const LS_KEY = 'liked_gallery_v2';
-  const getLiked = (): Set<string> => {
-    try { return new Set(JSON.parse(localStorage.getItem(LS_KEY)||'[]')); }
-    catch { return new Set(); }
+  
+  // FIXED: Hapus TypeScript annotations
+  const getLiked = () => {
+    try { 
+      return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); 
+    } catch { 
+      return new Set(); 
+    }
   };
-  const saveLiked = (s: Set<string>) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
-  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  
+  const saveLiked = (s) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
+  const fdate = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // FIXED: Escape HTML to prevent XSS
+  const escapeHtml = (str) => {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  };
 
   async function render() {
-    const loading = document.getElementById('loading')!;
-    const feed    = document.getElementById('gallery-feed')!;
-    const empty   = document.getElementById('empty-state')!;
+    // FIXED: Safety checks - hapus non-null assertion
+    const loading = document.getElementById('loading');
+    const feed = document.getElementById('gallery-feed');
+    const empty = document.getElementById('empty-state');
+    
+    if (!loading || !feed || !empty) return;
 
-    const { data: items, error } =
-      await supabase.from('gallery').select('*').order('created_at',{ascending:false});
+    const { data: items, error } = await supabase
+      .from('gallery')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     loading.style.display = 'none';
-    if (error || !items?.length) { empty.style.display='block'; return; }
+    
+    if (error || !items || items.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
 
     const liked = getLiked();
 
-    items.forEach((item: any, i: number) => {
+    items.forEach((item, i) => {
       const isLiked = liked.has(item.id);
-      const hFill   = isLiked ? '#ef4444' : 'none';
+      const hFill = isLiked ? '#ef4444' : 'none';
       const hStroke = isLiked ? '#ef4444' : 'rgba(255,255,255,0.92)';
+      const escapedTitle = escapeHtml(item.title || 'Untitled Memory');
+      const escapedCaption = item.caption ? escapeHtml(item.caption) : '';
+      const escapedUrl = escapeHtml(item.url);
 
       const el = document.createElement('div');
       el.className = 'gallery-card';
-      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i*0.08}s forwards`;
+      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i * 0.08}s forwards`;
 
       el.innerHTML = `
         <div class="gallery-card-img-wrap">
-          <img src="${item.url}" alt="${item.title||'Memory'}" loading="lazy" class="gallery-card-img"/>
+          <img src="${escapedUrl}" alt="${escapedTitle}" loading="lazy" class="gallery-card-img"/>
           <div class="gallery-card-img-grad"></div>
 
-          <!-- Info overlay: title+like always visible, date+caption appear on hover/click -->
           <div class="gallery-card-overlay">
-
-            <!-- Top: date — hidden until expanded -->
             <div class="gallery-overlay-top">
               <span class="gallery-card-date">${fdate(item.created_at)}</span>
             </div>
-
-            <!-- Bottom row always visible: title + like -->
             <div class="gallery-overlay-bottom">
               <div class="gallery-overlay-text">
-                <div class="gallery-card-title">${item.title || 'Untitled Memory'}</div>
-                ${item.caption ? `<div class="gallery-card-caption">${item.caption}</div>` : ''}
+                <div class="gallery-card-title">${escapedTitle}</div>
+                ${item.caption ? `<div class="gallery-card-caption">${escapedCaption}</div>` : ''}
               </div>
-              <button class="gallery-like-btn${isLiked?' liked':''}"
+              <button class="gallery-like-btn${isLiked ? ' liked' : ''}"
                 data-id="${item.id}" data-liked="${isLiked}" aria-label="Like">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13"
                   viewBox="0 0 24 24" fill="${hFill}" stroke="${hStroke}"
@@ -83,38 +107,53 @@ import Base from '../../layouts/Base.astro';
                 <span class="lc">${item.likes ?? 0}</span>
               </button>
             </div>
-
           </div>
         </div>`;
 
-      /* Click to expand: show date + full caption */
-      el.querySelector('.gallery-card-img-wrap')!.addEventListener('click', (e) => {
-        if ((e.target as Element).closest('.gallery-like-btn')) return;
-        el.classList.toggle('expanded');
-      });
+      // FIXED: Safety check for elements
+      const imgWrap = el.querySelector('.gallery-card-img-wrap');
+      const likeBtn = el.querySelector('.gallery-like-btn');
+      
+      if (imgWrap) {
+        imgWrap.addEventListener('click', (e) => {
+          const target = e.target;
+          if (target && target.closest && target.closest('.gallery-like-btn')) return;
+          el.classList.toggle('expanded');
+        });
+      }
 
-      /* Like */
-      el.querySelector<HTMLButtonElement>('.gallery-like-btn')!.addEventListener('click', async function(e) {
-        e.stopPropagation();
-        const wasLiked = this.dataset.liked === 'true';
-        const liked    = getLiked();
-        const lc       = this.querySelector('.lc')!;
-        const svg      = this.querySelector('svg')!;
-        const cur      = parseInt(lc.textContent || '0');
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async function(e) {
+          e.stopPropagation();
+          const wasLiked = this.dataset.liked === 'true';
+          const likedSet = getLiked();
+          const lc = this.querySelector('.lc');
+          const svg = this.querySelector('svg');
+          
+          if (!lc || !svg) return;
+          
+          const cur = parseInt(lc.textContent || '0');
 
-        if (wasLiked) {
-          liked.delete(item.id); this.dataset.liked='false'; this.classList.remove('liked');
-          svg.setAttribute('fill','none'); svg.setAttribute('stroke','rgba(255,255,255,0.92)');
-          lc.textContent = String(Math.max(0, cur - 1));
-          await supabase.rpc('decrement_likes',{table_name:'gallery',row_id:item.id});
-        } else {
-          liked.add(item.id); this.dataset.liked='true'; this.classList.add('liked');
-          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
-          lc.textContent = String(cur + 1);
-          await supabase.rpc('increment_likes',{table_name:'gallery',row_id:item.id});
-        }
-        saveLiked(liked);
-      });
+          if (wasLiked) {
+            likedSet.delete(item.id);
+            this.dataset.liked = 'false';
+            this.classList.remove('liked');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'rgba(255,255,255,0.92)');
+            lc.textContent = String(Math.max(0, cur - 1));
+            await supabase.rpc('decrement_likes', { table_name: 'gallery', row_id: item.id });
+          } else {
+            likedSet.add(item.id);
+            this.dataset.liked = 'true';
+            this.classList.add('liked');
+            svg.setAttribute('fill', '#ef4444');
+            svg.setAttribute('stroke', '#ef4444');
+            lc.textContent = String(cur + 1);
+            await supabase.rpc('increment_likes', { table_name: 'gallery', row_id: item.id });
+          }
+          saveLiked(likedSet);
+        });
+      }
 
       feed.appendChild(el);
     });
@@ -123,147 +162,216 @@ import Base from '../../layouts/Base.astro';
   render();
 </script>
 
-<style>
+<style is:global>
+  /* FIXED: Gunakan is:global agar CSS apply ke innerHTML elements */
+  
   /* ── Gallery card wrapper ── */
   .gallery-card {
-    border-radius:20px;
-    overflow:hidden;
-    box-shadow:0 4px 22px rgba(100,149,237,0.1), 0 1px 4px rgba(0,0,0,0.06);
-    transition:box-shadow 0.4s ease, transform 0.3s ease;
-    cursor:pointer;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 22px rgba(100, 149, 237, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.4s ease, transform 0.3s ease;
+    cursor: pointer;
   }
+  
   .gallery-card:hover {
-    box-shadow:0 12px 40px rgba(100,149,237,0.16), 0 2px 8px rgba(0,0,0,0.08);
-    transform:translateY(-2px);
+    box-shadow: 0 12px 40px rgba(100, 149, 237, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
   }
+  
   .gallery-card.expanded {
-    box-shadow:0 16px 48px rgba(100,149,237,0.2), 0 4px 12px rgba(0,0,0,0.1);
-    transform:translateY(-3px);
+    box-shadow: 0 16px 48px rgba(100, 149, 237, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
   }
 
   /* ── Image wrap ── */
   .gallery-card-img-wrap {
-    position:relative;
-    width:100%;
-    aspect-ratio:16/10;
-    overflow:hidden;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
   }
+  
   .gallery-card-img {
-    width:100%; height:100%; object-fit:cover; display:block;
-    transition:transform 0.65s ease, filter 0.4s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.65s ease, filter 0.4s ease;
   }
+  
   .gallery-card:not(.expanded) .gallery-card-img-wrap:hover .gallery-card-img {
-    transform:scale(1.04);
-    filter:brightness(0.85);
+    transform: scale(1.04);
+    filter: brightness(0.85);
   }
+  
   .gallery-card.expanded .gallery-card-img {
-    transform:scale(1.03);
-    filter:brightness(0.72) blur(0.5px);
+    transform: scale(1.03);
+    filter: brightness(0.72) blur(0.5px);
   }
 
   /* ── Gradient ── */
   .gallery-card-img-grad {
-    position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
       to top,
-      rgba(6,10,22,0.82) 0%,
-      rgba(6,10,22,0.35) 38%,
-      rgba(6,10,22,0.08) 60%,
+      rgba(6, 10, 22, 0.82) 0%,
+      rgba(6, 10, 22, 0.35) 38%,
+      rgba(6, 10, 22, 0.08) 60%,
       transparent 100%
     );
-    transition:opacity 0.4s ease;
+    transition: opacity 0.4s ease;
   }
+  
   .gallery-card.expanded .gallery-card-img-grad {
-    opacity:1.0;
+    opacity: 1;
   }
 
   /* ── Main overlay container ── */
   .gallery-card-overlay {
-    position:absolute; inset:0;
-    display:flex; flex-direction:column; justify-content:space-between;
-    padding:0.9rem 1.05rem;
-    pointer-events:none;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.9rem 1.05rem;
+    pointer-events: none;
   }
 
   /* ── Top: date — hidden by default, slides down on expand ── */
   .gallery-overlay-top {
-    display:flex; align-items:flex-start;
-    opacity:0;
-    transform:translateY(-8px);
-    transition:opacity 0.35s ease, transform 0.35s cubic-bezier(0.34,1.2,0.64,1);
+    display: flex;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
   }
+  
   .gallery-card.expanded .gallery-overlay-top {
-    opacity:1;
-    transform:translateY(0);
+    opacity: 1;
+    transform: translateY(0);
   }
+  
   .gallery-card-date {
-    display:inline-flex; align-items:center; gap:0.32rem;
-    font-family:'Playfair Display',Georgia,serif; font-style:italic;
-    font-size:0.65rem; color:rgba(255,255,255,0.85);
-    background:rgba(255,255,255,0.14);
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    border:1px solid rgba(255,255,255,0.2);
-    padding:0.25rem 0.65rem; border-radius:999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
   }
+  
   .gallery-card-date::before {
-    content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0;
-    background:#6495ED; box-shadow:0 0 6px rgba(100,149,237,0.9);
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--blue);
+    box-shadow: 0 0 6px rgba(100, 149, 237, 0.9);
   }
 
   /* ── Bottom: title + caption + like — always visible ── */
   .gallery-overlay-bottom {
-    display:flex; align-items:flex-end; justify-content:space-between; gap:0.6rem;
-    pointer-events:auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.6rem;
+    pointer-events: auto;
   }
+  
   .gallery-overlay-text {
-    flex:1; min-width:0;
+    flex: 1;
+    min-width: 0;
   }
 
   /* Title: always visible */
   .gallery-card-title {
-    font-family:'Playfair Display',Georgia,serif;
-    font-style:italic; font-size:1rem; font-weight:600;
-    color:#fff; line-height:1.25;
-    text-shadow:0 1px 8px rgba(0,0,0,0.6);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    transition:transform 0.35s cubic-bezier(0.34,1.2,0.64,1);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.25;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
   }
+  
   .gallery-card.expanded .gallery-card-title {
-    transform:translateY(-4px);
-    white-space:normal;
+    transform: translateY(-4px);
+    white-space: normal;
   }
 
   /* Caption: hidden by default, slides up on expand */
   .gallery-card-caption {
-    font-size:0.72rem;
-    color:rgba(255,255,255,0.88);
-    margin-top:0.35rem;
-    line-height:1.55;
-    max-height:0;
-    overflow:hidden;
-    opacity:0;
-    transition:max-height 0.4s ease, opacity 0.35s ease, margin-top 0.3s ease;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.88);
+    margin-top: 0.35rem;
+    line-height: 1.55;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.4s ease, opacity 0.35s ease, margin-top 0.3s ease;
   }
+  
   .gallery-card.expanded .gallery-card-caption {
-    max-height:80px;
-    opacity:1;
-    margin-top:0.42rem;
+    max-height: 80px;
+    opacity: 1;
+    margin-top: 0.42rem;
   }
 
   /* Like button */
   .gallery-like-btn {
-    flex-shrink:0; display:flex; align-items:center; gap:0.32rem;
-    background:rgba(255,255,255,0.18);
-    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-    border:1px solid rgba(255,255,255,0.28);
-    padding:0.32rem 0.72rem; border-radius:999px;
-    color:rgba(255,255,255,0.95); font-size:0.68rem; font-family:'SF Mono','Fira Code',monospace;
-    cursor:pointer; transition:all 0.2s ease; line-height:1;
-    pointer-events:auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    padding: 0.32rem 0.72rem;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+    pointer-events: auto;
   }
-  .gallery-like-btn:hover { background:rgba(255,255,255,0.30); border-color:rgba(255,255,255,0.45); }
-  .gallery-like-btn.liked { background:rgba(239,68,68,0.28); border-color:rgba(239,68,68,0.55); color:#fca5a5; }
-  .gallery-like-btn svg { transition:transform 0.2s ease; }
-  .gallery-like-btn:hover svg { transform:scale(1.2); }
-  .gallery-like-btn.liked svg { fill:#ef4444; stroke:#ef4444; }
+  
+  .gallery-like-btn:hover {
+    background: rgba(255, 255, 255, 0.30);
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+  
+  .gallery-like-btn.liked {
+    background: rgba(239, 68, 68, 0.28);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+  }
+  
+  .gallery-like-btn svg {
+    transition: transform 0.2s ease;
+  }
+  
+  .gallery-like-btn:hover svg {
+    transform: scale(1.2);
+  }
+  
+  .gallery-like-btn.liked svg {
+    fill: #ef4444;
+    stroke: #ef4444;
+  }
 </style>

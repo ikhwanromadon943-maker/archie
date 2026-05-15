@@ -1,0 +1,199 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Vault" description="Private notes, locked memories.">
+
+  <!-- Locked state -->
+  <div id="vault-locked" class="vault-outer">
+    <div class="vault-card">
+      <div class="vault-icon-circle">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6495ED" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="36" height="36">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          <circle cx="12" cy="16.5" r="1"/>
+        </svg>
+      </div>
+      <h2 class="vault-title">Private Vault</h2>
+      <p class="vault-sub">Enter access code</p>
+
+      <!-- PIN dots -->
+      <div class="pin-dots-wrap" id="pin-wrap">
+        <div class="pin-dots" id="pin-dots">
+          {Array.from({length:8}).map((_,i) => <div class="pin-dot" id={`d${i}`}></div>)}
+        </div>
+        <input type="password" id="vault-pw" class="vault-input" autocomplete="off" maxlength="32"/>
+      </div>
+
+      <p class="vault-error" id="vault-error"></p>
+
+      <button class="vault-unlock-btn" id="vault-unlock">UNLOCK</button>
+    </div>
+  </div>
+
+  <!-- Unlocked state -->
+  <div id="vault-content" style="display:none">
+    <div class="page-hdr-row">
+      <div>
+        <h1 class="vault-unlocked-title">My Vault</h1>
+        <p class="vault-unlocked-sub">Private entries, visible only to you.</p>
+      </div>
+      <button class="vault-lock-btn" id="vault-lock">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Lock
+      </button>
+    </div>
+    <div class="loading-state" id="vault-loading" style="display:none"><span class="loader"></span></div>
+    <div id="vault-list" class="notes-grid"></div>
+    <div class="empty-state" id="vault-empty" style="display:none">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <h3>Nothing here yet.</h3>
+      <p>Add private entries from the admin panel.</p>
+    </div>
+  </div>
+
+</Base>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  const SESSION_KEY = 'vault_unlocked';
+  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  let pinValue = '';
+  const pwInput = document.getElementById('vault-pw') as HTMLInputElement;
+
+  function updateDots() {
+    for (let i = 0; i < 8; i++) {
+      document.getElementById(`d${i}`)!.classList.toggle('filled', i < pinValue.length);
+    }
+  }
+
+  document.getElementById('pin-wrap')!.addEventListener('click', () => pwInput.focus());
+  pwInput.addEventListener('input', function() { pinValue = this.value; updateDots(); });
+  pwInput.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key==='Enter') document.getElementById('vault-unlock')!.click(); });
+
+  async function getPass(): Promise<string> {
+    const { data } = await supabase.from('settings').select('value').eq('key','admin_pass').single();
+    return data?.value || 'mysite2025';
+  }
+
+  async function renderVault() {
+    const vl = document.getElementById('vault-loading')!;
+    const list = document.getElementById('vault-list')!;
+    const empty = document.getElementById('vault-empty')!;
+    vl.style.display='flex'; list.innerHTML='';
+    const { data: items, error } = await supabase.from('vault').select('*').order('created_at',{ascending:false});
+    vl.style.display='none';
+    if (error || !items?.length) { empty.style.display='block'; return; }
+    empty.style.display='none';
+    items.forEach((item: any, i: number) => {
+      const el = document.createElement('article');
+      el.className = 'note-card';
+      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.07}s forwards`;
+      el.innerHTML = `
+        <div class="note-card-body">
+          <div class="note-meta-row">
+            <div class="note-meta-left">
+              <span class="note-dot"></span>
+              <span class="note-date">${fdate(item.created_at)}</span>
+            </div>
+          </div>
+          <h2 class="note-title">${item.title}</h2>
+          <p class="note-body" style="-webkit-line-clamp:unset;overflow:visible">${item.content.replace(/\n/g,'<br>')}</p>
+        </div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function unlock() {
+    document.getElementById('vault-locked')!.style.display='none';
+    document.getElementById('vault-content')!.style.display='block';
+    renderVault();
+  }
+
+  if (sessionStorage.getItem(SESSION_KEY)==='1') unlock();
+
+  document.getElementById('vault-unlock')!.addEventListener('click', async () => {
+    const err = document.getElementById('vault-error')!;
+    const correct = await getPass();
+    if (pinValue === correct) {
+      sessionStorage.setItem(SESSION_KEY,'1'); err.textContent=''; unlock();
+    } else {
+      err.textContent='Wrong access code.';
+      pinValue=''; pwInput.value=''; updateDots();
+      const dots = document.getElementById('pin-dots')!;
+      dots.classList.add('shake');
+      setTimeout(()=>dots.classList.remove('shake'),400);
+    }
+  });
+
+  document.getElementById('vault-lock')?.addEventListener('click',()=>{ sessionStorage.removeItem(SESSION_KEY); location.reload(); });
+</script>
+
+<style>
+  @keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-5px)}75%{transform:translate(5px)}}
+  .pin-dots.shake{animation:shake 0.4s cubic-bezier(.36,.07,.19,.97) both}
+
+  .vault-outer { display:flex; align-items:center; justify-content:center; min-height:70vh; }
+  .vault-card {
+    background:rgba(255,255,255,0.75);
+    backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,0.8);
+    border-radius:2rem; padding:3rem 2.5rem;
+    width:100%; max-width:400px; text-align:center;
+    box-shadow:0 20px 60px rgba(100,149,237,0.12), 0 4px 16px rgba(0,0,0,0.05);
+  }
+  .vault-icon-circle {
+    width:72px; height:72px; border-radius:50%;
+    background:linear-gradient(135deg,#eff6ff,#fff);
+    border:1px solid rgba(100,149,237,0.2);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 1.5rem;
+    box-shadow:0 2px 16px rgba(100,149,237,0.15);
+    transition:transform 0.3s ease;
+  }
+  .vault-card:hover .vault-icon-circle { transform:scale(1.07); }
+  .vault-title { font-family:'Playfair Display',serif; font-size:1.6rem; font-weight:700; color:#1e293b; margin-bottom:0.3rem; }
+  .vault-sub { font-size:0.78rem; color:#94a3b8; margin-bottom:2rem; }
+
+  .pin-dots-wrap { cursor:text; margin-bottom:1.5rem; position:relative; }
+  .pin-dots { display:flex; gap:12px; justify-content:center; padding:0.5rem 0; }
+  .pin-dot {
+    width:12px; height:12px; border-radius:50%;
+    background:#e2e8f0; transition:background 0.15s ease, transform 0.15s ease;
+  }
+  .pin-dot.filled { background:#6495ED; transform:scale(1.2); }
+  .vault-input { position:absolute; opacity:0; pointer-events:none; width:1px; height:1px; }
+
+  .vault-error { font-size:0.72rem; font-family:monospace; color:#ef4444; min-height:1.4em; margin-bottom:0.75rem; }
+
+  .vault-unlock-btn {
+    width:100%; padding:1rem;
+    background:#6495ED; color:#fff; border:none;
+    border-radius:0.75rem;
+    font-size:0.75rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+    cursor:pointer; transition:all 0.2s ease;
+    box-shadow:0 4px 16px rgba(100,149,237,0.35);
+  }
+  .vault-unlock-btn:hover { background:#5b89dc; transform:translateY(-1px); box-shadow:0 6px 20px rgba(100,149,237,0.45); }
+
+  .page-hdr-row { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:2rem; gap:1rem; }
+  .vault-unlocked-title { font-family:'Playfair Display',serif; font-size:2rem; font-weight:700; color:#6495ED; }
+  .vault-unlocked-sub { color:#64748b; font-size:0.82rem; margin-top:0.25rem; font-weight:300; }
+  .vault-lock-btn {
+    display:flex; align-items:center; gap:0.4rem;
+    padding:0.45rem 0.9rem; border-radius:0.5rem;
+    border:1.5px solid #e2e8f0; color:#94a3b8;
+    font-size:0.75rem; background:none; cursor:pointer;
+    transition:all 0.2s ease; white-space:nowrap;
+  }
+  .vault-lock-btn:hover { border-color:#6495ED; color:#6495ED; background:rgba(100,149,237,0.05); }
+  .empty-icon { display:flex; justify-content:center; color:#6495ED; opacity:0.2; margin-bottom:1rem; }
+</style>

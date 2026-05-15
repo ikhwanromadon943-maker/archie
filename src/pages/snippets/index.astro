@@ -20,24 +20,35 @@ import Base from '../../layouts/Base.astro';
 
   <!-- Code Modal -->
   <div class="modal-overlay" id="snip-modal">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 class="modal-title" id="modal-title">—</h2>
-        <button class="modal-close" id="modal-close">
+    <div class="snip-modal-box">
+      <div class="snip-modal-head">
+        <div class="snip-modal-meta">
+          <span class="snip-modal-lang-badge" id="modal-lang-badge">js</span>
+          <h2 class="snip-modal-title" id="modal-title">—</h2>
+        </div>
+        <button class="snip-modal-close" id="modal-close">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <p class="modal-desc" id="modal-desc"></p>
-      <div class="code-wrapper">
-        <div class="code-header">
-          <span id="modal-lang">js</span>
-          <button class="code-copy" id="copy-btn">copy</button>
+      <p class="snip-modal-desc" id="modal-desc"></p>
+      <div class="snip-code-wrap">
+        <div class="snip-code-top">
+          <span id="modal-lang-label">js</span>
+          <button class="snip-copy-btn" id="copy-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            copy
+          </button>
         </div>
-        <pre class="code-body"><code id="modal-code"></code></pre>
+        <pre class="snip-code-body"><code id="modal-code"></code></pre>
       </div>
-      <div class="modal-like-row">
-        <button class="modal-like-btn" id="modal-like-btn" aria-label="Like">
-          <svg id="modal-like-svg" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Like + views di luar code, bawah modal -->
+      <div class="snip-modal-footer">
+        <div class="snip-modal-stat">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span id="modal-views">0</span> views
+        </div>
+        <button class="snip-modal-like" id="modal-like-btn">
+          <svg id="modal-like-svg" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
           <span id="modal-like-count">0</span>
@@ -48,20 +59,36 @@ import Base from '../../layouts/Base.astro';
 
 </Base>
 
-
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const LS_LIKED = 'liked_snippets_v1';
-  const getLikedSnips = (): Set<string> => {
-    try { return new Set(JSON.parse(localStorage.getItem(LS_LIKED)||'[]')); }
-    catch { return new Set(); }
-  };
-  const saveLikedSnips = (s: Set<string>) => localStorage.setItem(LS_LIKED, JSON.stringify([...s]));
+  // ── Device fingerprint (no login) ──
+  // Kombinasi userAgent + screen + timezone → hash sederhana
+  function getDeviceId(): string {
+    const raw = [
+      navigator.userAgent,
+      screen.width, screen.height, screen.colorDepth,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.language,
+    ].join('|');
+    let h = 0;
+    for (let i = 0; i < raw.length; i++) {
+      h = Math.imul(31, h) + raw.charCodeAt(i) | 0;
+    }
+    return 'dev_' + Math.abs(h).toString(36);
+  }
+  const DEVICE_ID = getDeviceId();
+
+  // localStorage keys
+  const LS_LIKED   = 'snip_liked_v2';
+  const LS_VIEWED  = 'snip_viewed_v2';
+
+  const getLiked  = (): Set<string> => { try { return new Set(JSON.parse(localStorage.getItem(LS_LIKED)||'[]')); } catch { return new Set(); } };
+  const getViewed = (): Set<string> => { try { return new Set(JSON.parse(localStorage.getItem(LS_VIEWED)||'[]')); } catch { return new Set(); } };
+  const saveLiked  = (s: Set<string>) => localStorage.setItem(LS_LIKED,  JSON.stringify([...s]));
+  const saveViewed = (s: Set<string>) => localStorage.setItem(LS_VIEWED, JSON.stringify([...s]));
 
   const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'});
-  let currentSnippet: any = null;
-  let currentCode = '';
 
   function getLangClass(lang: string) {
     const l = lang?.toLowerCase() || '';
@@ -75,52 +102,64 @@ import Base from '../../layouts/Base.astro';
     return 'lang-other';
   }
 
-  // In-memory views cache so card updates after modal close
   const viewsCache: Record<string, number> = {};
   const likesCache: Record<string, number> = {};
+  let currentSnippet: any = null;
+  let currentCode = '';
 
   function updateCardStats(id: string) {
     const card = document.querySelector<HTMLElement>(`.snip-card[data-id="${id}"]`);
     if (!card) return;
-    const vEl = card.querySelector('.snip-stat-views span');
-    const lEl = card.querySelector('.snip-stat-likes span');
-    if (vEl && viewsCache[id] !== undefined) vEl.textContent = String(viewsCache[id]);
-    if (lEl && likesCache[id] !== undefined) lEl.textContent = String(likesCache[id]);
+    const vEl = card.querySelector<HTMLElement>('.sc-views');
+    const lEl = card.querySelector<HTMLElement>('.sc-likes');
+    if (vEl) vEl.textContent = String(viewsCache[id] ?? 0);
+    if (lEl) lEl.textContent = String(likesCache[id] ?? 0);
+    // Update like icon on card
+    const liked = getLiked();
+    const likeIcon = card.querySelector<HTMLElement>('.sc-like-icon');
+    if (likeIcon) likeIcon.setAttribute('fill', liked.has(id) ? '#ef4444' : 'none');
   }
 
   function openModal(s: any) {
     currentSnippet = s;
     currentCode = s.code;
 
-    document.getElementById('modal-title')!.textContent = s.title;
-    document.getElementById('modal-desc')!.textContent  = s.description || '';
-    document.getElementById('modal-lang')!.textContent  = s.language;
-    document.getElementById('modal-code')!.textContent  = s.code;
+    const langLabel = s.language || 'code';
+    document.getElementById('modal-title')!.textContent      = s.title;
+    document.getElementById('modal-desc')!.textContent       = s.description || '';
+    document.getElementById('modal-lang-badge')!.textContent = langLabel;
+    document.getElementById('modal-lang-badge')!.className   = `snip-modal-lang-badge ${getLangClass(langLabel)}`;
+    document.getElementById('modal-lang-label')!.textContent = langLabel;
+    document.getElementById('modal-code')!.textContent       = s.code;
+    document.getElementById('modal-views')!.textContent      = String(viewsCache[s.id] ?? 0);
     document.getElementById('snip-modal')!.classList.add('open');
 
     // Like state
-    const liked = getLikedSnips();
+    const liked = getLiked();
     const isLiked = liked.has(s.id);
     const likeBtn = document.getElementById('modal-like-btn')!;
     const likeSvg = document.getElementById('modal-like-svg')!;
-    const likeCount = document.getElementById('modal-like-count')!;
-    const curLikes = likesCache[s.id] ?? s.likes ?? 0;
-    likeCount.textContent = String(curLikes);
+    document.getElementById('modal-like-count')!.textContent = String(likesCache[s.id] ?? 0);
     if (isLiked) {
       likeBtn.classList.add('liked');
-      likeSvg.setAttribute('fill','#ef4444');
-      likeSvg.setAttribute('stroke','#ef4444');
+      likeSvg.setAttribute('fill','#ef4444'); likeSvg.setAttribute('stroke','#ef4444');
     } else {
       likeBtn.classList.remove('liked');
-      likeSvg.setAttribute('fill','none');
-      likeSvg.setAttribute('stroke','currentColor');
+      likeSvg.setAttribute('fill','none'); likeSvg.setAttribute('stroke','currentColor');
     }
 
-    // Increment views permanently
-    const newViews = (viewsCache[s.id] ?? s.views ?? 0) + 1;
-    viewsCache[s.id] = newViews;
-    updateCardStats(s.id);
-    supabase.rpc('increment_views', {row_id: s.id});
+    // Increment view — hanya 1x per device per snippet
+    const viewed = getViewed();
+    const viewKey = `${s.id}:${DEVICE_ID}`;
+    if (!viewed.has(viewKey)) {
+      viewed.add(viewKey);
+      saveViewed(viewed);
+      const nv = (viewsCache[s.id] ?? 0) + 1;
+      viewsCache[s.id] = nv;
+      document.getElementById('modal-views')!.textContent = String(nv);
+      updateCardStats(s.id);
+      supabase.rpc('increment_views', {row_id: s.id});
+    }
   }
 
   async function render() {
@@ -135,48 +174,83 @@ import Base from '../../layouts/Base.astro';
     if (error) { list.innerHTML=`<p class="err-msg">[error] ${error.message}</p>`; return; }
     if (!snippets?.length) { empty.style.display='block'; return; }
 
+    const liked = getLiked();
+
     snippets.forEach((s: any, i: number) => {
       viewsCache[s.id] = s.views ?? 0;
       likesCache[s.id] = s.likes ?? 0;
+      const isLiked = liked.has(s.id);
 
       const el = document.createElement('div');
       el.className = 'snip-card';
       el.dataset.id = s.id;
-      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.06}s forwards`;
+      el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.055}s forwards`;
 
       el.innerHTML = `
-        <div class="snip-card-body">
-          <div class="snip-badge">
-            <span class="snip-stat snip-stat-views">
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-              <span>${s.views ?? 0}</span>
-            </span>
-            <div class="snip-sep"></div>
-            <span class="snip-stat snip-stat-likes">
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              <span>${s.likes ?? 0}</span>
-            </span>
-          </div>
-
-          <h3 class="snip-title">${s.title}</h3>
-          ${s.description ? `<p class="snip-desc">${s.description}</p>` : ''}
-
-          <div class="snip-foot">
+        <div class="snip-card-main" role="button" tabindex="0">
+          <div class="snip-card-top">
             <span class="snip-lang ${getLangClass(s.language)}">${s.language || 'code'}</span>
             <span class="snip-date">${fdate(s.created_at)}</span>
           </div>
+          <h3 class="snip-title">${s.title}</h3>
+          ${s.description ? `<p class="snip-desc">${s.description}</p>` : ''}
+        </div>
+        <div class="snip-card-foot">
+          <div class="snip-card-stats">
+            <span class="sc-stat">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="sc-views">${s.views ?? 0}</span>
+            </span>
+          </div>
+          <button class="sc-like-btn${isLiked?' liked':''}" data-id="${s.id}" aria-label="Like">
+            <svg class="sc-like-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+              fill="${isLiked?'#ef4444':'none'}" stroke="${isLiked?'#ef4444':'currentColor'}" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span class="sc-likes">${s.likes ?? 0}</span>
+          </button>
         </div>`;
 
-      // Click animation + open
-      el.addEventListener('click', () => {
-        el.style.transition = 'transform 0.14s cubic-bezier(0.34,1.56,0.64,1)';
-        el.style.transform = 'scale(0.97)';
-        setTimeout(() => { el.style.transform = 'scale(1)'; }, 130);
-        setTimeout(() => openModal(s), 80);
+      // Open modal on card body click
+      el.querySelector('.snip-card-main')!.addEventListener('click', () => {
+        el.style.transition = 'transform 0.13s ease';
+        el.style.transform  = 'scale(0.97)';
+        setTimeout(() => { el.style.transform = ''; }, 140);
+        setTimeout(() => openModal(s), 70);
+      });
+
+      // Like button on card — independent dari modal
+      el.querySelector<HTMLButtonElement>('.sc-like-btn')!.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const btn     = e.currentTarget as HTMLButtonElement;
+        const id      = btn.dataset.id!;
+        const liked   = getLiked();
+        const isLiked = liked.has(id);
+        const svg     = btn.querySelector('svg')!;
+        const countEl = btn.querySelector('.sc-likes')!;
+        const cur     = likesCache[id] ?? 0;
+
+        if (isLiked) {
+          liked.delete(id); btn.classList.remove('liked');
+          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
+          likesCache[id] = Math.max(0, cur - 1);
+          await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:id});
+        } else {
+          liked.add(id); btn.classList.add('liked');
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          likesCache[id] = cur + 1;
+          await supabase.rpc('increment_likes',{table_name:'snippets',row_id:id});
+        }
+        saveLiked(liked);
+        countEl.textContent = String(likesCache[id]);
+        // sync modal jika sedang buka snippet yg sama
+        if (currentSnippet?.id === id) {
+          document.getElementById('modal-like-count')!.textContent = String(likesCache[id]);
+          const mSvg = document.getElementById('modal-like-svg')!;
+          const mBtn = document.getElementById('modal-like-btn')!;
+          if (liked.has(id)) { mBtn.classList.add('liked'); mSvg.setAttribute('fill','#ef4444'); mSvg.setAttribute('stroke','#ef4444'); }
+          else { mBtn.classList.remove('liked'); mSvg.setAttribute('fill','none'); mSvg.setAttribute('stroke','currentColor'); }
+        }
       });
 
       list.appendChild(el);
@@ -188,30 +262,25 @@ import Base from '../../layouts/Base.astro';
   // Modal like button
   document.getElementById('modal-like-btn')!.addEventListener('click', async function() {
     if (!currentSnippet) return;
-    const id = currentSnippet.id;
-    const liked = getLikedSnips();
+    const id    = currentSnippet.id;
+    const liked = getLiked();
     const isLiked = liked.has(id);
-    const likeCount = document.getElementById('modal-like-count')!;
-    const likeSvg   = document.getElementById('modal-like-svg')!;
-    const cur = likesCache[id] ?? 0;
+    const likeSvg = document.getElementById('modal-like-svg')!;
+    const cur   = likesCache[id] ?? 0;
 
     if (isLiked) {
-      liked.delete(id);
-      this.classList.remove('liked');
-      likeSvg.setAttribute('fill','none');
-      likeSvg.setAttribute('stroke','currentColor');
+      liked.delete(id); this.classList.remove('liked');
+      likeSvg.setAttribute('fill','none'); likeSvg.setAttribute('stroke','currentColor');
       likesCache[id] = Math.max(0, cur - 1);
       await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:id});
     } else {
-      liked.add(id);
-      this.classList.add('liked');
-      likeSvg.setAttribute('fill','#ef4444');
-      likeSvg.setAttribute('stroke','#ef4444');
+      liked.add(id); this.classList.add('liked');
+      likeSvg.setAttribute('fill','#ef4444'); likeSvg.setAttribute('stroke','#ef4444');
       likesCache[id] = cur + 1;
       await supabase.rpc('increment_likes',{table_name:'snippets',row_id:id});
     }
-    saveLikedSnips(liked);
-    likeCount.textContent = String(likesCache[id]);
+    saveLiked(liked);
+    document.getElementById('modal-like-count')!.textContent = String(likesCache[id]);
     updateCardStats(id);
   });
 
@@ -227,29 +296,158 @@ import Base from '../../layouts/Base.astro';
   document.getElementById('copy-btn')!.addEventListener('click', () => {
     navigator.clipboard.writeText(currentCode).then(() => {
       const btn = document.getElementById('copy-btn')!;
-      btn.textContent = 'copied!';
-      setTimeout(() => btn.textContent = 'copy', 2000);
+      btn.textContent = '✓ copied';
+      setTimeout(() => { btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy`; }, 2000);
     });
   });
 </script>
 
 <style>
-  .modal-like-row {
-    display:flex; justify-content:flex-end;
-    margin-top:1rem; padding-top:0.75rem;
-    border-top:1px solid rgba(241,245,249,0.95);
+  /* ── Cards ── */
+  .snip-card {
+    background:rgba(255,255,255,0.55);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.8);
+    border-radius:18px; overflow:hidden;
+    box-shadow:0 2px 12px rgba(100,149,237,0.07);
+    transition:transform 0.25s ease, box-shadow 0.25s ease;
   }
-  .modal-like-btn {
-    display:flex; align-items:center; gap:0.4rem;
+  .snip-card:hover {
+    transform:translateY(-3px);
+    box-shadow:0 10px 32px rgba(100,149,237,0.13);
+  }
+  .snip-card-main {
+    padding:1rem 1.1rem 0.6rem; cursor:pointer;
+  }
+  .snip-card-top {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:0.5rem;
+  }
+  .snip-title {
+    font-family:'Playfair Display',serif;
+    font-size:1rem; font-weight:700; color:#1e293b;
+    margin-bottom:0.3rem; line-height:1.3;
+    transition:color 0.2s ease;
+  }
+  .snip-card:hover .snip-title { color:#6495ED; }
+  .snip-desc {
+    font-size:0.76rem; color:#94a3b8; line-height:1.55;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .snip-date { font-size:0.62rem; font-family:monospace; color:#cbd5e1; }
+
+  /* Card footer — like + views outside */
+  .snip-card-foot {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0.5rem 1.1rem 0.75rem;
+    border-top:1px solid rgba(241,245,249,0.9);
+    margin-top:0.4rem;
+  }
+  .snip-card-stats { display:flex; align-items:center; gap:0.75rem; }
+  .sc-stat {
+    display:flex; align-items:center; gap:0.25rem;
+    font-size:0.65rem; font-family:monospace; color:#cbd5e1;
+  }
+  .sc-like-btn {
+    display:flex; align-items:center; gap:0.28rem;
+    font-size:0.68rem; font-family:monospace;
+    color:#94a3b8; background:none; border:none;
+    cursor:pointer; padding:0.2rem 0.5rem; border-radius:999px;
+    transition:all 0.18s ease;
+  }
+  .sc-like-btn:hover { color:#ef4444; background:rgba(239,68,68,0.07); }
+  .sc-like-btn.liked { color:#ef4444; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position:fixed; inset:0;
+    background:rgba(15,23,42,0.45);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    z-index:300;
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:0 0 0 0; opacity:0; pointer-events:none;
+    transition:opacity 0.22s ease;
+  }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+
+  .snip-modal-box {
+    background:rgba(255,255,255,0.96);
+    border-radius:24px 24px 0 0;
+    width:100%; max-width:560px;
+    max-height:88vh; overflow-y:auto;
+    padding:1.5rem 1.5rem 2rem;
+    transform:translateY(20px);
+    transition:transform 0.28s cubic-bezier(0.22,1,0.36,1);
+    box-shadow:0 -8px 40px rgba(0,0,0,0.12);
+  }
+  .modal-overlay.open .snip-modal-box { transform:translateY(0); }
+
+  .snip-modal-head {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:1rem; margin-bottom:0.5rem;
+  }
+  .snip-modal-meta { display:flex; align-items:center; gap:0.6rem; flex:1; min-width:0; }
+  .snip-modal-lang-badge {
+    font-size:0.58rem; font-family:monospace; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    padding:0.15rem 0.5rem; border-radius:5px; flex-shrink:0;
+  }
+  .snip-modal-title {
+    font-family:'Playfair Display',serif;
+    font-size:1.15rem; font-weight:700; color:#1e293b; line-height:1.3;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .snip-modal-close {
+    background:#f1f5f9; border:none; color:#94a3b8;
+    width:28px; height:28px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all 0.15s ease;
+  }
+  .snip-modal-close:hover { background:#e2e8f0; color:#334155; }
+
+  .snip-modal-desc {
+    font-size:0.78rem; color:#94a3b8; margin-bottom:0.75rem; line-height:1.6;
+  }
+
+  /* Code block */
+  .snip-code-wrap { background:#0f172a; border-radius:12px; overflow:hidden; margin-bottom:0.75rem; }
+  .snip-code-top {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0.45rem 1rem;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    font-family:monospace; font-size:0.62rem; color:rgba(255,255,255,0.3);
+  }
+  .snip-copy-btn {
+    display:flex; align-items:center; gap:0.3rem;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1);
+    color:rgba(255,255,255,0.45); padding:0.12rem 0.5rem; border-radius:5px;
+    font-family:monospace; font-size:0.6rem; cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .snip-copy-btn:hover { background:rgba(255,255,255,0.15); color:#fff; }
+  .snip-code-body {
+    padding:1rem 1.1rem; overflow-x:auto;
+    font-size:0.76rem; line-height:1.65; color:#94a3b8;
+  }
+  .snip-code-body code { font-weight:300; letter-spacing:0.01em; }
+
+  /* Modal footer */
+  .snip-modal-footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding-top:0.6rem;
+    border-top:1px solid #f1f5f9;
+  }
+  .snip-modal-stat {
+    display:flex; align-items:center; gap:0.3rem;
+    font-size:0.7rem; font-family:monospace; color:#cbd5e1;
+  }
+  .snip-modal-like {
+    display:flex; align-items:center; gap:0.35rem;
     font-size:0.75rem; font-family:monospace;
     color:#94a3b8; background:none; border:1px solid #e2e8f0;
-    cursor:pointer; padding:0.3rem 0.75rem; border-radius:999px;
-    transition:all 0.2s ease; position:relative; z-index:10;
+    cursor:pointer; padding:0.28rem 0.75rem; border-radius:999px;
+    transition:all 0.18s ease;
   }
-  .modal-like-btn:hover { color:#ef4444; background:rgba(239,68,68,0.07); border-color:#fecaca; }
-  .modal-like-btn.liked { color:#ef4444; border-color:#fecaca; background:rgba(239,68,68,0.05); }
-  /* code lebih ringan & rapi */
-  .code-body { font-size:0.78rem !important; line-height:1.7 !important; }
-  .code-body code { font-weight:300 !important; letter-spacing:0.01em; }
-  .code-copy { font-weight:400 !important; }
+  .snip-modal-like:hover { color:#ef4444; background:rgba(239,68,68,0.06); border-color:#fecaca; }
+  .snip-modal-like.liked { color:#ef4444; border-color:#fecaca; background:rgba(239,68,68,0.05); }
 </style>

@@ -1,0 +1,115 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Journal" description="Short thoughts, fleeting moments, memories etched in digital ink.">
+
+  <header class="notes-hdr">
+    <h1>The Journal</h1>
+    <p>Short thoughts, fleeting moments, and memories etched in digital ink.</p>
+  </header>
+
+  <div class="loading-state" id="loading"><span class="loader"></span></div>
+
+  <div class="notes-feed" id="notes-list"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none">
+    <div class="empty-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <h3>Nothing written yet.</h3>
+    <p>The first entry has yet to be made.</p>
+  </div>
+
+</Base>
+
+
+<script>
+  import { supabase } from '../../lib/supabase';
+
+  const LS_KEY = 'liked_notes_v2';
+  const getLiked = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem(LS_KEY)||'[]')); }
+    catch { return new Set(); }
+  };
+  const saveLiked = (s: Set<string>) => localStorage.setItem(LS_KEY, JSON.stringify([...s]));
+  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  async function render() {
+    const list    = document.getElementById('notes-list')!;
+    const loading = document.getElementById('loading')!;
+    const empty   = document.getElementById('empty-state')!;
+
+    const { data: notes, error } = await supabase
+      .from('notes').select('*').order('created_at',{ascending:false});
+
+    loading.style.display = 'none';
+    if (error) { list.innerHTML=`<p class="err-msg">[error] ${error.message}</p>`; return; }
+    if (!notes?.length) { empty.style.display='block'; return; }
+
+    const liked = getLiked();
+
+    notes.forEach((note: any, i: number) => {
+      const isLiked  = liked.has(note.id);
+      const hFill    = isLiked ? '#ef4444' : 'none';
+      const hStroke  = isLiked ? '#ef4444' : 'currentColor';
+
+      const el = document.createElement('article');
+      el.className = 'note-card';
+      el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i*0.07}s forwards`;
+
+      el.innerHTML = `
+        <div class="note-card-body">
+          <div class="note-meta-row">
+            <div class="note-meta-left">
+              <span class="note-dot"></span>
+              <span class="note-date">${fdate(note.created_at)}</span>
+            </div>
+            <div class="note-edit-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </div>
+          </div>
+          ${note.title ? `<h2 class="note-title">${note.title}</h2>` : ''}
+          ${note.image_url ? `<img src="${note.image_url}" alt="" class="note-img" loading="lazy"/>` : ''}
+          <p class="note-body">${note.content.replace(/\n/g,'<br>')}</p>
+          <div class="note-footer">
+            <button class="note-like${isLiked?' liked':''}" data-id="${note.id}" data-liked="${isLiked}" aria-label="Like">
+              <svg class="heart-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                fill="${hFill}" stroke="${hStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              <span class="lc">${note.likes ?? 0}</span>
+            </button>
+          </div>
+        </div>`;
+
+      el.querySelector<HTMLButtonElement>('.note-like')!.addEventListener('click', async function() {
+        const id       = this.dataset.id!;
+        const wasLiked = this.dataset.liked === 'true';
+        const liked    = getLiked();
+        const lc       = this.querySelector('.lc')!;
+        const svg      = this.querySelector('svg')!;
+        const cur      = parseInt(lc.textContent || '0');
+
+        if (wasLiked) {
+          liked.delete(id); this.dataset.liked='false'; this.classList.remove('liked');
+          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
+          lc.textContent = String(Math.max(0, cur - 1));
+          await supabase.rpc('decrement_likes',{table_name:'notes',row_id:id});
+        } else {
+          liked.add(id); this.dataset.liked='true'; this.classList.add('liked');
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          lc.textContent = String(cur + 1);
+          await supabase.rpc('increment_likes',{table_name:'notes',row_id:id});
+        }
+        saveLiked(liked);
+      });
+
+      list.appendChild(el);
+    });
+  }
+
+  render();
+</script>

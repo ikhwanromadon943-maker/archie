@@ -19,16 +19,7 @@ import Base from '../../layouts/Base.astro';
     <p>The gallery awaits its first memory.</p>
   </div>
 
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox">
-    <button class="lightbox-close" id="lb-close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <img id="lb-img" src="" alt=""/>
-  </div>
-
 </Base>
-
 
 <script>
   import { supabase } from '../../lib/supabase';
@@ -55,65 +46,84 @@ import Base from '../../layouts/Base.astro';
     const liked = getLiked();
 
     items.forEach((item: any, i: number) => {
-      const isLiked  = liked.has(item.id);
-      const hFill    = isLiked ? '#ef4444' : 'none';
-      const hStroke  = isLiked ? '#ef4444' : 'rgba(255,255,255,0.92)';
-      const hasBottom = item.title || item.caption;
+      const isLiked = liked.has(item.id);
 
       const el = document.createElement('div');
       el.className = 'gallery-card';
       el.style.cssText = `opacity:0;animation:fadeUp 0.45s ease ${i*0.08}s forwards`;
 
+      // Default state: only title + date + like (no image)
       el.innerHTML = `
-        <div class="gallery-card-img-wrap">
-          <img src="${item.url}" alt="${item.title||'Memory'}" loading="lazy" class="gallery-card-img"/>
-          <div class="gallery-card-img-grad"></div>
-          <div class="gallery-card-img-info">
-            <div class="gallery-card-img-text">
-              <div class="gallery-card-date">${fdate(item.created_at)}</div>
-              <div class="gallery-card-title">${item.title || 'Untitled Memory'}</div>
-              ${item.caption ? `<div class="gallery-card-caption">${item.caption}</div>` : ''}
+        <div class="gc-collapsed">
+          <div class="gc-meta">
+            <div class="gc-meta-left">
+              <span class="gc-dot"></span>
+              <span class="gc-date">${fdate(item.created_at)}</span>
             </div>
-            <button class="gallery-like-btn${isLiked?' liked':''}"
-              data-id="${item.id}" data-liked="${isLiked}" aria-label="Like">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13"
-                viewBox="0 0 24 24" fill="${hFill}" stroke="${hStroke}"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              <span class="lc">${item.likes ?? 0}</span>
-            </button>
+            <div class="gc-title-row">
+              <span class="gc-title">${item.title || 'Untitled Memory'}</span>
+              <span class="gc-expand-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
           </div>
+          <button class="gallery-like-btn${isLiked?' liked':''}" data-id="${item.id}" data-liked="${isLiked}" aria-label="Like">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+              fill="${isLiked?'#ef4444':'none'}" stroke="${isLiked?'#ef4444':'currentColor'}"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span class="lc">${item.likes ?? 0}</span>
+          </button>
+        </div>
+        <div class="gc-expandable" aria-hidden="true">
+          <div class="gc-img-wrap">
+            <img src="${item.url}" alt="${item.title||'Memory'}" loading="lazy" class="gc-img"/>
+            <div class="gc-img-blur"></div>
+          </div>
+          ${item.caption ? `<p class="gc-caption">${item.caption}</p>` : ''}
         </div>`;
 
-      /* lightbox */
-      el.querySelector('.gallery-card-img-wrap')!.addEventListener('click', (e) => {
+      // Toggle expand on click (except like btn)
+      const collapsed = el.querySelector('.gc-collapsed')!;
+      const expandable = el.querySelector('.gc-expandable') as HTMLElement;
+      const expandIcon = el.querySelector('.gc-expand-icon') as HTMLElement;
+
+      collapsed.addEventListener('click', (e) => {
         if ((e.target as Element).closest('.gallery-like-btn')) return;
-        (document.getElementById('lb-img') as HTMLImageElement).src = item.url;
-        document.getElementById('lightbox')!.classList.add('open');
+        const isOpen = el.classList.contains('gc-open');
+        if (isOpen) {
+          el.classList.remove('gc-open');
+          expandable.style.maxHeight = '0';
+          expandIcon.style.transform = 'rotate(0deg)';
+        } else {
+          el.classList.add('gc-open');
+          expandable.style.maxHeight = expandable.scrollHeight + 'px';
+          expandIcon.style.transform = 'rotate(180deg)';
+        }
       });
 
-      /* like — tersimpan permanent di Supabase + localStorage */
+      // Like button
       el.querySelector<HTMLButtonElement>('.gallery-like-btn')!.addEventListener('click', async function(e) {
         e.stopPropagation();
         const wasLiked = this.dataset.liked === 'true';
-        const liked    = getLiked();
-        const lc       = this.querySelector('.lc')!;
-        const svg      = this.querySelector('svg')!;
-        const cur      = parseInt(lc.textContent || '0');
+        const likedSet = getLiked();
+        const lc  = this.querySelector('.lc')!;
+        const svg = this.querySelector('svg')!;
+        const cur = parseInt(lc.textContent || '0');
 
         if (wasLiked) {
-          liked.delete(item.id); this.dataset.liked='false'; this.classList.remove('liked');
-          svg.setAttribute('fill','none'); svg.setAttribute('stroke','rgba(255,255,255,0.92)');
+          likedSet.delete(item.id); this.dataset.liked='false'; this.classList.remove('liked');
+          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
           lc.textContent = String(Math.max(0, cur - 1));
           await supabase.rpc('decrement_likes',{table_name:'gallery',row_id:item.id});
         } else {
-          liked.add(item.id); this.dataset.liked='true'; this.classList.add('liked');
+          likedSet.add(item.id); this.dataset.liked='true'; this.classList.add('liked');
           svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
           lc.textContent = String(cur + 1);
           await supabase.rpc('increment_likes',{table_name:'gallery',row_id:item.id});
         }
-        saveLiked(liked);
+        saveLiked(likedSet);
       });
 
       feed.appendChild(el);
@@ -121,14 +131,116 @@ import Base from '../../layouts/Base.astro';
   }
 
   render();
-
-  document.getElementById('lb-close')!.addEventListener('click', () =>
-    document.getElementById('lightbox')!.classList.remove('open'));
-  document.getElementById('lightbox')!.addEventListener('click', (e) => {
-    if (e.target === document.getElementById('lightbox'))
-      document.getElementById('lightbox')!.classList.remove('open');
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.getElementById('lightbox')!.classList.remove('open');
-  });
 </script>
+
+<style>
+  /* Gallery card — glass */
+  .gallery-feed { display:flex; flex-direction:column; gap:0.85rem; padding-bottom:2rem; }
+
+  .gallery-card {
+    background:rgba(255,255,255,0.58);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,0.82);
+    border-radius:18px;
+    box-shadow:0 4px 20px rgba(100,149,237,0.08),0 1px 4px rgba(0,0,0,0.04);
+    overflow:hidden;
+    transition:box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .gallery-card:hover {
+    box-shadow:0 8px 32px rgba(100,149,237,0.13);
+    border-color:rgba(100,149,237,0.2);
+  }
+
+  /* Collapsed header row */
+  .gc-collapsed {
+    display:flex; align-items:center; justify-content:space-between; gap:0.75rem;
+    padding:0.95rem 1.1rem;
+    cursor:pointer;
+    user-select:none;
+    transition:background 0.2s ease;
+  }
+  .gc-collapsed:hover { background:rgba(100,149,237,0.04); }
+  .gc-collapsed:active { background:rgba(100,149,237,0.08); }
+
+  .gc-meta { flex:1; min-width:0; }
+  .gc-meta-left {
+    display:flex; align-items:center; gap:0.38rem;
+    margin-bottom:0.22rem;
+  }
+  .gc-dot {
+    width:5px; height:5px; border-radius:50%;
+    background:#6495ED; opacity:0.55; flex-shrink:0;
+  }
+  .gc-date {
+    font-family:'Playfair Display',serif; font-style:italic;
+    font-size:0.72rem; color:#94a3b8;
+  }
+  .gc-title-row {
+    display:flex; align-items:center; gap:0.5rem;
+  }
+  .gc-title {
+    font-family:'Playfair Display',serif;
+    font-size:1rem; font-weight:700;
+    color:#334155; line-height:1.25;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    flex:1; min-width:0;
+    transition:color 0.2s ease;
+  }
+  .gallery-card:hover .gc-title { color:#6495ED; }
+
+  .gc-expand-icon {
+    color:#94a3b8; flex-shrink:0;
+    transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), color 0.2s ease;
+    display:flex; align-items:center;
+  }
+  .gallery-card:hover .gc-expand-icon { color:#6495ED; }
+
+  /* Like button in collapsed row */
+  .gallery-like-btn {
+    flex-shrink:0; display:flex; align-items:center; gap:0.3rem;
+    background:rgba(241,245,249,0.8);
+    border:1px solid rgba(226,232,240,0.9);
+    padding:0.28rem 0.65rem; border-radius:999px;
+    color:#94a3b8; font-size:0.65rem; font-family:monospace;
+    cursor:pointer; transition:all 0.2s ease; line-height:1;
+  }
+  .gallery-like-btn:hover { background:rgba(239,68,68,0.07); border-color:rgba(239,68,68,0.3); color:#ef4444; }
+  .gallery-like-btn.liked { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.4); color:#ef4444; }
+  .gallery-like-btn svg { transition:transform 0.2s ease; }
+  .gallery-like-btn:hover svg { transform:scale(1.2); }
+
+  /* Expandable area — smooth vertical slide */
+  .gc-expandable {
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.45s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .gc-img-wrap {
+    position:relative; width:100%;
+    aspect-ratio:4/3; overflow:hidden;
+  }
+  .gc-img {
+    width:100%; height:100%; object-fit:cover; display:block;
+    transition:transform 1.2s ease;
+  }
+  .gallery-card.gc-open .gc-img { transform:scale(1.02); }
+
+  /* Subtle blur at bottom of image */
+  .gc-img-blur {
+    position:absolute; bottom:0; left:0; right:0; height:60px;
+    background:linear-gradient(to top, rgba(255,255,255,0.35), transparent);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+    pointer-events:none;
+    mask-image:linear-gradient(to top, black 30%, transparent);
+    -webkit-mask-image:linear-gradient(to top, black 30%, transparent);
+  }
+
+  .gc-caption {
+    padding:0.75rem 1.1rem 1rem;
+    font-size:0.8rem; color:#64748b;
+    line-height:1.65; font-style:italic;
+    border-top:1px dashed rgba(148,163,184,0.25);
+  }
+</style>

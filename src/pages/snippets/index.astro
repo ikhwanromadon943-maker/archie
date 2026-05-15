@@ -40,12 +40,20 @@ import Base from '../../layouts/Base.astro';
 
 </Base>
 
-
 <script>
   import { supabase } from '../../lib/supabase';
 
+  const LS_LIKES_KEY = 'liked_snippets_v1';
+  const getLikedSnips = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem(LS_LIKES_KEY)||'[]')); }
+    catch { return new Set(); }
+  };
+  const saveLikedSnips = (s: Set<string>) => localStorage.setItem(LS_LIKES_KEY, JSON.stringify([...s]));
+
   const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'});
   let currentCode = '';
+  // Track view counts locally to update UI optimistically
+  const viewedSnips = new Set<string>(JSON.parse(localStorage.getItem('viewed_snips_v1')||'[]'));
 
   function getLangClass(lang: string) {
     const l = lang?.toLowerCase() || '';
@@ -59,14 +67,23 @@ import Base from '../../layouts/Base.astro';
     return 'lang-other';
   }
 
-  function openModal(s: any) {
+  function openModal(s: any, cardEl: HTMLElement) {
     currentCode = s.code;
     document.getElementById('modal-title')!.textContent = s.title;
     document.getElementById('modal-desc')!.textContent  = s.description || '';
     document.getElementById('modal-lang')!.textContent  = s.language;
     document.getElementById('modal-code')!.textContent  = s.code;
     document.getElementById('snip-modal')!.classList.add('open');
-    supabase.rpc('increment_views',{row_id:s.id});
+
+    // Increment views permanently — once per snippet per browser session
+    if (!viewedSnips.has(s.id)) {
+      viewedSnips.add(s.id);
+      localStorage.setItem('viewed_snips_v1', JSON.stringify([...viewedSnips]));
+      // Optimistic UI update
+      const viewEl = cardEl.querySelector('.snip-stat-views span');
+      if (viewEl) viewEl.textContent = String((parseInt(viewEl.textContent||'0')) + 1);
+      supabase.rpc('increment_views', {row_id: s.id});
+    }
   }
 
   async function render() {
@@ -81,7 +98,10 @@ import Base from '../../layouts/Base.astro';
     if (error) { list.innerHTML=`<p class="err-msg">[error] ${error.message}</p>`; return; }
     if (!snippets?.length) { empty.style.display='block'; return; }
 
+    const likedSet = getLikedSnips();
+
     snippets.forEach((s: any, i: number) => {
+      const isLiked = likedSet.has(s.id);
       const el = document.createElement('div');
       el.className = 'snip-card';
       el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.06}s forwards`;
@@ -93,15 +113,16 @@ import Base from '../../layouts/Base.astro';
               <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
-              ${s.views ?? 0}
+              <span>${s.views ?? 0}</span>
             </span>
             <div class="snip-sep"></div>
-            <span class="snip-stat snip-stat-likes">
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button class="snip-like-btn${isLiked?' liked':''}" data-id="${s.id}" data-liked="${isLiked}" aria-label="Like">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+                fill="${isLiked?'#ef4444':'none'}" stroke="${isLiked?'#ef4444':'currentColor'}" stroke-width="2">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
-              ${s.likes ?? 0}
-            </span>
+              <span class="slc">${s.likes ?? 0}</span>
+            </button>
           </div>
 
           <h3 class="snip-title">${s.title}</h3>
@@ -113,7 +134,35 @@ import Base from '../../layouts/Base.astro';
           </div>
         </div>`;
 
-      el.addEventListener('click', () => openModal(s));
+      // Card click → open modal
+      el.querySelector('.snip-card-body')!.addEventListener('click', (e) => {
+        if ((e.target as Element).closest('.snip-like-btn')) return;
+        openModal(s, el);
+      });
+
+      // Like button
+      el.querySelector<HTMLButtonElement>('.snip-like-btn')!.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const wasLiked = this.dataset.liked === 'true';
+        const likedSet = getLikedSnips();
+        const lc  = this.querySelector('.slc')!;
+        const svg = this.querySelector('svg')!;
+        const cur = parseInt(lc.textContent || '0');
+
+        if (wasLiked) {
+          likedSet.delete(s.id); this.dataset.liked='false'; this.classList.remove('liked');
+          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
+          lc.textContent = String(Math.max(0, cur - 1));
+          await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:s.id});
+        } else {
+          likedSet.add(s.id); this.dataset.liked='true'; this.classList.add('liked');
+          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
+          lc.textContent = String(cur + 1);
+          await supabase.rpc('increment_likes',{table_name:'snippets',row_id:s.id});
+        }
+        saveLikedSnips(likedSet);
+      });
+
       list.appendChild(el);
     });
   }
@@ -137,3 +186,23 @@ import Base from '../../layouts/Base.astro';
     });
   });
 </script>
+
+<style>
+  /* Like button in badge area */
+  .snip-like-btn {
+    display:inline-flex; align-items:center; gap:0.22rem;
+    background:none; border:none; cursor:pointer;
+    color:var(--text-mute,#94a3b8); padding:0; transition:color 0.2s ease;
+    font-size:0.6rem; font-family:monospace;
+  }
+  .snip-like-btn:hover { color:#ef4444; }
+  .snip-like-btn.liked { color:#ef4444; }
+  .snip-like-btn svg { transition:transform 0.2s ease; }
+  .snip-like-btn:hover svg { transform:scale(1.25); }
+
+  /* Code block — normal weight, not heavy */
+  .code-body {
+    font-weight:400 !important;
+    font-size:0.8rem !important;
+  }
+</style>

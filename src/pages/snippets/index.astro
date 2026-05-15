@@ -35,25 +35,33 @@ import Base from '../../layouts/Base.astro';
         </div>
         <pre class="code-body"><code id="modal-code"></code></pre>
       </div>
+      <div class="modal-like-row">
+        <button class="modal-like-btn" id="modal-like-btn" aria-label="Like">
+          <svg id="modal-like-svg" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span id="modal-like-count">0</span>
+        </button>
+      </div>
     </div>
   </div>
 
 </Base>
 
+
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const LS_LIKES_KEY = 'liked_snippets_v1';
+  const LS_LIKED = 'liked_snippets_v1';
   const getLikedSnips = (): Set<string> => {
-    try { return new Set(JSON.parse(localStorage.getItem(LS_LIKES_KEY)||'[]')); }
+    try { return new Set(JSON.parse(localStorage.getItem(LS_LIKED)||'[]')); }
     catch { return new Set(); }
   };
-  const saveLikedSnips = (s: Set<string>) => localStorage.setItem(LS_LIKES_KEY, JSON.stringify([...s]));
+  const saveLikedSnips = (s: Set<string>) => localStorage.setItem(LS_LIKED, JSON.stringify([...s]));
 
   const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'numeric'});
+  let currentSnippet: any = null;
   let currentCode = '';
-  // Track view counts locally to update UI optimistically
-  const viewedSnips = new Set<string>(JSON.parse(localStorage.getItem('viewed_snips_v1')||'[]'));
 
   function getLangClass(lang: string) {
     const l = lang?.toLowerCase() || '';
@@ -67,23 +75,52 @@ import Base from '../../layouts/Base.astro';
     return 'lang-other';
   }
 
-  function openModal(s: any, cardEl: HTMLElement) {
+  // In-memory views cache so card updates after modal close
+  const viewsCache: Record<string, number> = {};
+  const likesCache: Record<string, number> = {};
+
+  function updateCardStats(id: string) {
+    const card = document.querySelector<HTMLElement>(`.snip-card[data-id="${id}"]`);
+    if (!card) return;
+    const vEl = card.querySelector('.snip-stat-views span');
+    const lEl = card.querySelector('.snip-stat-likes span');
+    if (vEl && viewsCache[id] !== undefined) vEl.textContent = String(viewsCache[id]);
+    if (lEl && likesCache[id] !== undefined) lEl.textContent = String(likesCache[id]);
+  }
+
+  function openModal(s: any) {
+    currentSnippet = s;
     currentCode = s.code;
+
     document.getElementById('modal-title')!.textContent = s.title;
     document.getElementById('modal-desc')!.textContent  = s.description || '';
     document.getElementById('modal-lang')!.textContent  = s.language;
     document.getElementById('modal-code')!.textContent  = s.code;
     document.getElementById('snip-modal')!.classList.add('open');
 
-    // Increment views permanently — once per snippet per browser session
-    if (!viewedSnips.has(s.id)) {
-      viewedSnips.add(s.id);
-      localStorage.setItem('viewed_snips_v1', JSON.stringify([...viewedSnips]));
-      // Optimistic UI update
-      const viewEl = cardEl.querySelector('.snip-stat-views span');
-      if (viewEl) viewEl.textContent = String((parseInt(viewEl.textContent||'0')) + 1);
-      supabase.rpc('increment_views', {row_id: s.id});
+    // Like state
+    const liked = getLikedSnips();
+    const isLiked = liked.has(s.id);
+    const likeBtn = document.getElementById('modal-like-btn')!;
+    const likeSvg = document.getElementById('modal-like-svg')!;
+    const likeCount = document.getElementById('modal-like-count')!;
+    const curLikes = likesCache[s.id] ?? s.likes ?? 0;
+    likeCount.textContent = String(curLikes);
+    if (isLiked) {
+      likeBtn.classList.add('liked');
+      likeSvg.setAttribute('fill','#ef4444');
+      likeSvg.setAttribute('stroke','#ef4444');
+    } else {
+      likeBtn.classList.remove('liked');
+      likeSvg.setAttribute('fill','none');
+      likeSvg.setAttribute('stroke','currentColor');
     }
+
+    // Increment views permanently
+    const newViews = (viewsCache[s.id] ?? s.views ?? 0) + 1;
+    viewsCache[s.id] = newViews;
+    updateCardStats(s.id);
+    supabase.rpc('increment_views', {row_id: s.id});
   }
 
   async function render() {
@@ -98,12 +135,13 @@ import Base from '../../layouts/Base.astro';
     if (error) { list.innerHTML=`<p class="err-msg">[error] ${error.message}</p>`; return; }
     if (!snippets?.length) { empty.style.display='block'; return; }
 
-    const likedSet = getLikedSnips();
-
     snippets.forEach((s: any, i: number) => {
-      const isLiked = likedSet.has(s.id);
+      viewsCache[s.id] = s.views ?? 0;
+      likesCache[s.id] = s.likes ?? 0;
+
       const el = document.createElement('div');
       el.className = 'snip-card';
+      el.dataset.id = s.id;
       el.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.06}s forwards`;
 
       el.innerHTML = `
@@ -116,13 +154,12 @@ import Base from '../../layouts/Base.astro';
               <span>${s.views ?? 0}</span>
             </span>
             <div class="snip-sep"></div>
-            <button class="snip-like-btn${isLiked?' liked':''}" data-id="${s.id}" data-liked="${isLiked}" aria-label="Like">
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
-                fill="${isLiked?'#ef4444':'none'}" stroke="${isLiked?'#ef4444':'currentColor'}" stroke-width="2">
+            <span class="snip-stat snip-stat-likes">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
-              <span class="slc">${s.likes ?? 0}</span>
-            </button>
+              <span>${s.likes ?? 0}</span>
+            </span>
           </div>
 
           <h3 class="snip-title">${s.title}</h3>
@@ -134,33 +171,12 @@ import Base from '../../layouts/Base.astro';
           </div>
         </div>`;
 
-      // Card click → open modal
-      el.querySelector('.snip-card-body')!.addEventListener('click', (e) => {
-        if ((e.target as Element).closest('.snip-like-btn')) return;
-        openModal(s, el);
-      });
-
-      // Like button
-      el.querySelector<HTMLButtonElement>('.snip-like-btn')!.addEventListener('click', async function(e) {
-        e.stopPropagation();
-        const wasLiked = this.dataset.liked === 'true';
-        const likedSet = getLikedSnips();
-        const lc  = this.querySelector('.slc')!;
-        const svg = this.querySelector('svg')!;
-        const cur = parseInt(lc.textContent || '0');
-
-        if (wasLiked) {
-          likedSet.delete(s.id); this.dataset.liked='false'; this.classList.remove('liked');
-          svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor');
-          lc.textContent = String(Math.max(0, cur - 1));
-          await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:s.id});
-        } else {
-          likedSet.add(s.id); this.dataset.liked='true'; this.classList.add('liked');
-          svg.setAttribute('fill','#ef4444'); svg.setAttribute('stroke','#ef4444');
-          lc.textContent = String(cur + 1);
-          await supabase.rpc('increment_likes',{table_name:'snippets',row_id:s.id});
-        }
-        saveLikedSnips(likedSet);
+      // Click animation + open
+      el.addEventListener('click', () => {
+        el.style.transition = 'transform 0.14s cubic-bezier(0.34,1.56,0.64,1)';
+        el.style.transform = 'scale(0.97)';
+        setTimeout(() => { el.style.transform = 'scale(1)'; }, 130);
+        setTimeout(() => openModal(s), 80);
       });
 
       list.appendChild(el);
@@ -168,6 +184,36 @@ import Base from '../../layouts/Base.astro';
   }
 
   render();
+
+  // Modal like button
+  document.getElementById('modal-like-btn')!.addEventListener('click', async function() {
+    if (!currentSnippet) return;
+    const id = currentSnippet.id;
+    const liked = getLikedSnips();
+    const isLiked = liked.has(id);
+    const likeCount = document.getElementById('modal-like-count')!;
+    const likeSvg   = document.getElementById('modal-like-svg')!;
+    const cur = likesCache[id] ?? 0;
+
+    if (isLiked) {
+      liked.delete(id);
+      this.classList.remove('liked');
+      likeSvg.setAttribute('fill','none');
+      likeSvg.setAttribute('stroke','currentColor');
+      likesCache[id] = Math.max(0, cur - 1);
+      await supabase.rpc('decrement_likes',{table_name:'snippets',row_id:id});
+    } else {
+      liked.add(id);
+      this.classList.add('liked');
+      likeSvg.setAttribute('fill','#ef4444');
+      likeSvg.setAttribute('stroke','#ef4444');
+      likesCache[id] = cur + 1;
+      await supabase.rpc('increment_likes',{table_name:'snippets',row_id:id});
+    }
+    saveLikedSnips(liked);
+    likeCount.textContent = String(likesCache[id]);
+    updateCardStats(id);
+  });
 
   document.getElementById('modal-close')!.addEventListener('click', () =>
     document.getElementById('snip-modal')!.classList.remove('open'));
@@ -188,21 +234,20 @@ import Base from '../../layouts/Base.astro';
 </script>
 
 <style>
-  /* Like button in badge area */
-  .snip-like-btn {
-    display:inline-flex; align-items:center; gap:0.22rem;
-    background:none; border:none; cursor:pointer;
-    color:var(--text-mute,#94a3b8); padding:0; transition:color 0.2s ease;
-    font-size:0.6rem; font-family:monospace;
+  .modal-like-row {
+    display:flex; justify-content:flex-end;
+    margin-top:1rem; padding-top:0.75rem;
+    border-top:1px solid rgba(241,245,249,0.95);
   }
-  .snip-like-btn:hover { color:#ef4444; }
-  .snip-like-btn.liked { color:#ef4444; }
-  .snip-like-btn svg { transition:transform 0.2s ease; }
-  .snip-like-btn:hover svg { transform:scale(1.25); }
-
-  /* Code block — normal weight, not heavy */
-  .code-body {
-    font-weight:400 !important;
-    font-size:0.8rem !important;
+  .modal-like-btn {
+    display:flex; align-items:center; gap:0.4rem;
+    font-size:0.75rem; font-family:monospace;
+    color:#94a3b8; background:none; border:none;
+    cursor:pointer; padding:0.3rem 0.65rem; border-radius:999px;
+    transition:all 0.2s ease;
   }
+  .modal-like-btn:hover { color:#ef4444; background:rgba(239,68,68,0.07); }
+  .modal-like-btn.liked { color:#ef4444; }
+  /* code tidak terlalu tebal */
+  .code-body code { font-weight:300 !important; }
 </style>

@@ -1,0 +1,324 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base title="Admin">
+  <div class="container">
+    <div class="page-header fade-up">
+      <h1>Admin Panel</h1>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem">
+        <span class="status-badge" id="admin-status">●  Authenticated</span>
+        <button class="btn btn-ghost" id="logout-btn" style="font-size:0.75rem;padding:0.3rem 0.7rem">Logout</button>
+      </div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="notes">Journal</button>
+      <button class="admin-tab" data-tab="gallery">Gallery</button>
+      <button class="admin-tab" data-tab="snippets">Snippets</button>
+      <button class="admin-tab" data-tab="music">Music</button>
+      <button class="admin-tab" data-tab="vault">Vault</button>
+      <button class="admin-tab" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- JOURNAL -->
+    <div id="tab-notes" class="tab-panel">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">New Journal Entry</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Title (optional)</label><input type="text" id="note-title" class="form-input" placeholder="Leave blank for untitled"/></div>
+          <div class="form-group"><label class="form-label">Content *</label><textarea id="note-content" class="form-textarea" placeholder="What's on your mind..." rows="5"></textarea></div>
+          <div class="form-group"><label class="form-label">Image URL (optional)</label><input type="text" id="note-image" class="form-input" placeholder="https://..."/></div>
+          <button class="btn btn-primary" id="add-note-btn">Add Entry</button>
+          <span class="save-msg" id="note-msg"></span>
+        </div>
+      </div>
+      <div id="notes-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- GALLERY -->
+    <div id="tab-gallery" class="tab-panel" style="display:none">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">Add Photo</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Image URL *</label><input type="text" id="gallery-url" class="form-input" placeholder="https://..."/></div>
+          <div class="form-group"><label class="form-label">Title</label><input type="text" id="gallery-title" class="form-input" placeholder="Optional"/></div>
+          <div class="form-group"><label class="form-label">Caption</label><input type="text" id="gallery-caption" class="form-input" placeholder="Optional"/></div>
+          <button class="btn btn-primary" id="add-gallery-btn">Add Photo</button>
+          <span class="save-msg" id="gallery-msg"></span>
+        </div>
+      </div>
+      <div id="gallery-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- SNIPPETS -->
+    <div id="tab-snippets" class="tab-panel" style="display:none">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">Add Snippet</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="snip-title" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Description</label><input type="text" id="snip-desc" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Language</label>
+            <select id="snip-lang" class="form-input">
+              <option value="js">JavaScript</option><option value="ts">TypeScript</option>
+              <option value="py">Python</option><option value="sh">Shell</option>
+              <option value="css">CSS</option><option value="html">HTML</option>
+              <option value="json">JSON</option><option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Code *</label><textarea id="snip-code" class="form-textarea" rows="8" style="font-family:var(--font-mono);font-size:0.82rem"></textarea></div>
+          <button class="btn btn-primary" id="add-snip-btn">Save Snippet</button>
+          <span class="save-msg" id="snip-msg"></span>
+        </div>
+      </div>
+      <div id="snippets-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- MUSIC -->
+    <div id="tab-music" class="tab-panel" style="display:none">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">Add Track</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="music-title" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Artist *</label><input type="text" id="music-artist" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Duration</label><input type="text" id="music-duration" class="form-input" placeholder="3:45"/></div>
+          <div class="form-group"><label class="form-label">URL (Spotify/YouTube)</label><input type="text" id="music-url" class="form-input" placeholder="https://..."/></div>
+          <div class="form-group"><label class="form-label">Thumbnail URL</label><input type="text" id="music-thumb" class="form-input" placeholder="https://..."/></div>
+          <button class="btn btn-primary" id="add-music-btn">Add Track</button>
+          <span class="save-msg" id="music-msg"></span>
+        </div>
+      </div>
+      <div id="music-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- VAULT -->
+    <div id="tab-vault" class="tab-panel" style="display:none">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">Add Vault Entry</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="vault-title" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Content *</label><textarea id="vault-content-inp" class="form-textarea" rows="5"></textarea></div>
+          <button class="btn btn-primary" id="add-vault-btn">Save to Vault</button>
+          <span class="save-msg" id="vault-msg"></span>
+        </div>
+      </div>
+      <div id="vault-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-panel" style="display:none">
+      <div class="admin-card">
+        <div class="admin-card-header"><span class="admin-card-title">Change Passphrase</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">New Passphrase</label><input type="password" id="new-pass" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Confirm</label><input type="password" id="confirm-pass" class="form-input"/></div>
+          <button class="btn btn-primary" id="change-pass-btn">Update Passphrase</button>
+          <p id="pass-msg" style="margin-top:0.75rem;font-size:0.8rem;font-family:var(--font-mono);color:var(--green)"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+
+  if (sessionStorage.getItem('admin_authed') !== '1') window.location.href = '/admin/login';
+
+  document.getElementById('logout-btn')!.addEventListener('click',()=>{
+    sessionStorage.removeItem('admin_authed');
+    window.location.href = '/admin/login';
+  });
+
+  // ── Tabs ──
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', function(this: HTMLButtonElement) {
+      document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll<HTMLElement>('.tab-panel').forEach(p=>p.style.display='none');
+      this.classList.add('active');
+      const t = this.dataset.tab!;
+      document.getElementById(`tab-${t}`)!.style.display='block';
+      renderTab(t);
+    });
+  });
+
+  // ── Helpers ──
+  const uid = () => crypto.randomUUID();
+  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value.trim();
+  const clear = (...ids: string[]) => ids.forEach(id => { (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value=''; });
+  const msg = (id: string, text: string, ok=true) => {
+    const el = document.getElementById(id)!;
+    el.textContent = text;
+    el.style.color = ok ? 'var(--green)' : 'var(--red)';
+    setTimeout(()=>el.textContent='',3000);
+  };
+
+  function makeCard(title: string, sub: string, onDelete: ()=>Promise<void>) {
+    const el = document.createElement('div');
+    el.className = 'admin-card';
+    el.innerHTML = `
+      <div class="admin-card-header">
+        <span class="admin-card-title">${title}</span>
+        <button class="delete-btn">Delete</button>
+      </div>
+      <div class="admin-card-body" style="padding:0.6rem 1.25rem">
+        <p style="font-size:0.8rem;color:var(--text-mute)">${sub}</p>
+      </div>`;
+    el.querySelector('.delete-btn')!.addEventListener('click', async () => {
+      if (confirm(`Delete "${title}"?`)) { await onDelete(); el.remove(); }
+    });
+    return el;
+  }
+
+  // ── NOTES ──
+  async function renderNotes() {
+    const list = document.getElementById('notes-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('notes').select('*').order('created_at',{ascending:false});
+    data?.forEach((n: any) => {
+      list.appendChild(makeCard(
+        n.title || '(untitled)',
+        `${fdate(n.created_at)} · ${n.content.slice(0,60)}...`,
+        async () => { await supabase.from('notes').delete().eq('id',n.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-note-btn')!.addEventListener('click', async () => {
+    const title = val('note-title'); const content = val('note-content'); const image_url = val('note-image');
+    if (!content) return msg('note-msg','Content required.',false);
+    const { error } = await supabase.from('notes').insert({ title:title||null, content, image_url:image_url||null });
+    if (error) return msg('note-msg',error.message,false);
+    clear('note-title','note-content','note-image');
+    msg('note-msg','Entry saved!');
+    renderNotes();
+  });
+
+  // ── GALLERY ──
+  async function renderGalleryAdmin() {
+    const list = document.getElementById('gallery-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('gallery').select('*').order('created_at',{ascending:false});
+    data?.forEach((g: any) => {
+      list.appendChild(makeCard(
+        g.title || 'Untitled Photo',
+        `${fdate(g.created_at)} · ${g.url.slice(0,50)}`,
+        async () => { await supabase.from('gallery').delete().eq('id',g.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-gallery-btn')!.addEventListener('click', async () => {
+    const url = val('gallery-url'); const title = val('gallery-title'); const caption = val('gallery-caption');
+    if (!url) return msg('gallery-msg','URL required.',false);
+    const { error } = await supabase.from('gallery').insert({ url, title:title||null, caption:caption||null });
+    if (error) return msg('gallery-msg',error.message,false);
+    clear('gallery-url','gallery-title','gallery-caption');
+    msg('gallery-msg','Photo added!');
+    renderGalleryAdmin();
+  });
+
+  // ── SNIPPETS ──
+  async function renderSnippetsAdmin() {
+    const list = document.getElementById('snippets-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('snippets').select('*').order('created_at',{ascending:false});
+    data?.forEach((s: any) => {
+      list.appendChild(makeCard(
+        s.title,
+        `[${s.language}] ${s.description||''} · ${fdate(s.created_at)}`,
+        async () => { await supabase.from('snippets').delete().eq('id',s.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-snip-btn')!.addEventListener('click', async () => {
+    const title = val('snip-title'); const description = val('snip-desc');
+    const language = (document.getElementById('snip-lang') as HTMLSelectElement).value;
+    const code = val('snip-code');
+    if (!title || !code) return msg('snip-msg','Title & code required.',false);
+    const { error } = await supabase.from('snippets').insert({ title, description:description||null, language, code });
+    if (error) return msg('snip-msg',error.message,false);
+    clear('snip-title','snip-desc','snip-code');
+    msg('snip-msg','Snippet saved!');
+    renderSnippetsAdmin();
+  });
+
+  // ── MUSIC ──
+  async function renderMusicAdmin() {
+    const list = document.getElementById('music-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('music').select('*').order('added_at',{ascending:false});
+    data?.forEach((m: any) => {
+      list.appendChild(makeCard(
+        m.title,
+        `${m.artist}${m.duration ? ' · '+m.duration : ''}`,
+        async () => { await supabase.from('music').delete().eq('id',m.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-music-btn')!.addEventListener('click', async () => {
+    const title = val('music-title'); const artist = val('music-artist');
+    const duration = val('music-duration'); const url = val('music-url'); const thumbnail = val('music-thumb');
+    if (!title || !artist) return msg('music-msg','Title & artist required.',false);
+    const { error } = await supabase.from('music').insert({ title, artist, duration:duration||null, url:url||null, thumbnail:thumbnail||null });
+    if (error) return msg('music-msg',error.message,false);
+    clear('music-title','music-artist','music-duration','music-url','music-thumb');
+    msg('music-msg','Track added!');
+    renderMusicAdmin();
+  });
+
+  // ── VAULT ──
+  async function renderVaultAdmin() {
+    const list = document.getElementById('vault-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('vault').select('*').order('created_at',{ascending:false});
+    data?.forEach((v: any) => {
+      list.appendChild(makeCard(
+        v.title,
+        `${fdate(v.created_at)} · ${v.content.slice(0,60)}`,
+        async () => { await supabase.from('vault').delete().eq('id',v.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-vault-btn')!.addEventListener('click', async () => {
+    const title = val('vault-title'); const content = val('vault-content-inp');
+    if (!title || !content) return msg('vault-msg','Title & content required.',false);
+    const { error } = await supabase.from('vault').insert({ title, content });
+    if (error) return msg('vault-msg',error.message,false);
+    clear('vault-title','vault-content-inp');
+    msg('vault-msg','Saved to vault!');
+    renderVaultAdmin();
+  });
+
+  // ── SETTINGS ──
+  document.getElementById('change-pass-btn')!.addEventListener('click', async () => {
+    const np = (document.getElementById('new-pass') as HTMLInputElement).value;
+    const cp = (document.getElementById('confirm-pass') as HTMLInputElement).value;
+    const pmsg = document.getElementById('pass-msg')!;
+    if (!np) { pmsg.style.color='var(--red)'; pmsg.textContent='Enter a passphrase.'; return; }
+    if (np !== cp) { pmsg.style.color='var(--red)'; pmsg.textContent='Passphrases do not match.'; return; }
+    const { error } = await supabase.from('settings').update({ value: np, updated_at: new Date().toISOString() }).eq('key','admin_pass');
+    if (error) { pmsg.style.color='var(--red)'; pmsg.textContent=error.message; return; }
+    pmsg.style.color='var(--green)'; pmsg.textContent='Passphrase updated! Re-logging in...';
+    setTimeout(()=>{ sessionStorage.removeItem('admin_authed'); window.location.href='/admin/login'; }, 1500);
+  });
+
+  function renderTab(tab: string) {
+    const map: Record<string,(()=>Promise<void>)> = {
+      notes: renderNotes, gallery: renderGalleryAdmin,
+      snippets: renderSnippetsAdmin, music: renderMusicAdmin, vault: renderVaultAdmin
+    };
+    map[tab]?.();
+  }
+
+  renderNotes();
+</script>
+
+<style>
+  .status-badge { font-family:var(--font-mono);font-size:0.72rem;color:var(--green); }
+  .save-msg { font-family:var(--font-mono);font-size:0.75rem;margin-left:0.75rem; }
+</style>

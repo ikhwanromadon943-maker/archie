@@ -15,6 +15,7 @@ import Base from '../../layouts/Base.astro';
     <div class="admin-tabs">
       <button class="admin-tab active" data-tab="notes">Journal</button>
       <button class="admin-tab" data-tab="gallery">Gallery</button>
+      <button class="admin-tab" data-tab="snippets">Snippets</button>
       <button class="admin-tab" data-tab="music">Music</button>
       <button class="admin-tab" data-tab="vault">Vault</button>
       <button class="admin-tab" data-tab="settings">Settings</button>
@@ -48,6 +49,29 @@ import Base from '../../layouts/Base.astro';
         </div>
       </div>
       <div id="gallery-admin-list" class="admin-grid"></div>
+    </div>
+
+    <!-- SNIPPETS -->
+    <div id="tab-snippets" class="tab-panel" style="display:none">
+      <div class="admin-card" style="margin-bottom:1rem">
+        <div class="admin-card-header"><span class="admin-card-title">Add Snippet</span></div>
+        <div class="admin-card-body">
+          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="snip-title" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Description</label><input type="text" id="snip-desc" class="form-input"/></div>
+          <div class="form-group"><label class="form-label">Language</label>
+            <select id="snip-lang" class="form-input">
+              <option value="js">JavaScript</option><option value="ts">TypeScript</option>
+              <option value="py">Python</option><option value="sh">Shell</option>
+              <option value="css">CSS</option><option value="html">HTML</option>
+              <option value="json">JSON</option><option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Code *</label><textarea id="snip-code" class="form-textarea" rows="8" style="font-family:var(--font-mono);font-size:0.82rem"></textarea></div>
+          <button class="btn btn-primary" id="add-snip-btn">Save Snippet</button>
+          <span class="save-msg" id="snip-msg"></span>
+        </div>
+      </div>
+      <div id="snippets-admin-list" class="admin-grid"></div>
     </div>
 
     <!-- MUSIC -->
@@ -119,6 +143,7 @@ import Base from '../../layouts/Base.astro';
   });
 
   // ── Helpers ──
+  const uid = () => crypto.randomUUID();
   const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   const val = (id: string) => (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value.trim();
   const clear = (...ids: string[]) => ids.forEach(id => { (document.getElementById(id) as HTMLInputElement|HTMLTextAreaElement).value=''; });
@@ -194,6 +219,32 @@ import Base from '../../layouts/Base.astro';
     renderGalleryAdmin();
   });
 
+  // ── SNIPPETS ──
+  async function renderSnippetsAdmin() {
+    const list = document.getElementById('snippets-admin-list')!;
+    list.innerHTML = '';
+    const { data } = await supabase.from('snippets').select('*').order('created_at',{ascending:false});
+    data?.forEach((s: any) => {
+      list.appendChild(makeCard(
+        s.title,
+        `[${s.language}] ${s.description||''} · ${fdate(s.created_at)}`,
+        async () => { await supabase.from('snippets').delete().eq('id',s.id); }
+      ));
+    });
+  }
+
+  document.getElementById('add-snip-btn')!.addEventListener('click', async () => {
+    const title = val('snip-title'); const description = val('snip-desc');
+    const language = (document.getElementById('snip-lang') as HTMLSelectElement).value;
+    const code = val('snip-code');
+    if (!title || !code) return msg('snip-msg','Title & code required.',false);
+    const { error } = await supabase.from('snippets').insert({ title, description:description||null, language, code });
+    if (error) return msg('snip-msg',error.message,false);
+    clear('snip-title','snip-desc','snip-code');
+    msg('snip-msg','Snippet saved!');
+    renderSnippetsAdmin();
+  });
+
   // ── MUSIC ──
   async function renderMusicAdmin() {
     const list = document.getElementById('music-admin-list')!;
@@ -259,10 +310,15 @@ import Base from '../../layouts/Base.astro';
   function renderTab(tab: string) {
     const map: Record<string,(()=>Promise<void>)> = {
       notes: renderNotes, gallery: renderGalleryAdmin,
-      music: renderMusicAdmin, vault: renderVaultAdmin
+      snippets: renderSnippetsAdmin, music: renderMusicAdmin, vault: renderVaultAdmin
     };
     map[tab]?.();
   }
 
   renderNotes();
 </script>
+
+<style>
+  .status-badge { font-family:var(--font-mono);font-size:0.72rem;color:var(--green); }
+  .save-msg { font-family:var(--font-mono);font-size:0.75rem;margin-left:0.75rem; }
+</style>

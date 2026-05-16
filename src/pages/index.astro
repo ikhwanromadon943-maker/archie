@@ -104,12 +104,12 @@ import Base from '../layouts/Base.astro';
   }
   .hero-accent { color:#6495ED; font-weight:500; font-style:italic; }
 
-  /* Buttons — stretch horizontally, fill container width */
+  /* Buttons — stacked vertikal, journal atas gallery bawah */
   .hero-btns {
-    display:grid;
-    grid-template-columns:1fr 1fr;
+    display:flex;
+    flex-direction:column;
     gap:0.85rem;
-    width:100%; max-width:480px;
+    width:100%; max-width:340px;
   }
   .btn-primary-hero {
     display:flex; align-items:center; justify-content:center; gap:0.55rem;

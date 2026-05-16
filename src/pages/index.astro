@@ -5,26 +5,25 @@ import Base from '../layouts/Base.astro';
 
   <div class="hero-wrap">
     <div class="hero-badge-wrap">
-      <span class="hero-badge">Personal Archive & Sanctuary</span>
+      <span class="hero-badge">Personal Archive &amp; Sanctuary</span>
     </div>
     <h1 class="hero-title">Archie.</h1>
     <p class="hero-sub">
       A quiet space for things meant to endure.<br/>
       Inspired by the spirit of <span class="hero-accent">Myosotis</span>—the Forget-Me-Not.<br/>
-      Here, fragments of time are<br/>
-      gathered and kept safe from the<br/>
+      Here, fragments of time are gathered and kept safe from the<br/>
       current of oblivion.
     </p>
     <div class="hero-btns">
       <a href="/notes" class="btn-primary-hero">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
         </svg>
         Read Journal
       </a>
       <a href="/gallery" class="btn-ghost-hero">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
           <circle cx="8.5" cy="8.5" r="1.5"/>
           <polyline points="21 15 16 10 5 21"/>
@@ -37,7 +36,7 @@ import Base from '../layouts/Base.astro';
   <div class="home-cards">
     <a href="/notes" class="home-card">
       <div class="home-card-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
         </svg>
       </div>
@@ -46,7 +45,7 @@ import Base from '../layouts/Base.astro';
     </a>
     <a href="/gallery" class="home-card">
       <div class="home-card-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
       </div>
@@ -67,46 +66,42 @@ import Base from '../layouts/Base.astro';
     justify-content:center; min-height:68vh;
     text-align:center; padding:0 0.25rem;
   }
-
-  /* Badge */
-  .hero-badge-wrap { margin-bottom:1.4rem; }
+  .hero-badge-wrap { margin-bottom:1.3rem; }
   .hero-badge {
-    display:inline-block; padding:0.45rem 1.3rem; border-radius:999px;
+    display:inline-block; padding:0.42rem 1.2rem; border-radius:999px;
     border:1px solid rgba(100,149,237,0.3);
     background:rgba(255,255,255,0.55);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-    color:#6495ED; font-size:0.78rem; font-weight:700;
+    color:#6495ED; font-size:0.76rem; font-weight:700;
     letter-spacing:0.16em; text-transform:uppercase;
   }
-
-  /* Title — lebih besar */
+  /* Title — dikecilkan dari 9.5rem ke 7rem */
   .hero-title {
     font-family:'Playfair Display',Georgia,serif;
-    font-size:clamp(5.5rem,18vw,9.5rem);
+    font-size:clamp(3.8rem,13vw,7rem);
     font-weight:700; color:#6495ED;
-    letter-spacing:-0.04em; line-height:0.92;
+    letter-spacing:-0.04em; line-height:0.93;
     margin-bottom:1.4rem;
-    filter:drop-shadow(0 2px 14px rgba(100,149,237,0.2));
+    filter:drop-shadow(0 2px 12px rgba(100,149,237,0.18));
   }
-
-  /* Subtitle — lebih besar, line break natural */
+  /* Subtitle */
   .hero-sub {
-    font-size:1.18rem; font-weight:300;
+    font-size:1.12rem; font-weight:300;
     color:#475569; line-height:2.0;
-    max-width:360px; margin-bottom:2.6rem;
+    max-width:420px; margin-bottom:2.4rem;
   }
   .hero-accent { color:#6495ED; font-weight:500; font-style:italic; }
 
-  /* Buttons — lebar sesuai teks sub (max-width sama) */
+  /* Buttons — lebar sesuai subtitle */
   .hero-btns {
     display:flex; flex-direction:column;
-    gap:0.8rem; width:100%; max-width:260px;
+    gap:0.75rem; width:100%; max-width:270px;
   }
   .btn-primary-hero {
     display:flex; align-items:center; justify-content:center; gap:0.5rem;
-    padding:0.9rem 1rem;
+    padding:0.88rem 1rem;
     background:#6495ED; color:#fff;
-    border-radius:0.85rem; font-weight:600; font-size:0.95rem;
+    border-radius:0.85rem; font-weight:600; font-size:0.93rem;
     box-shadow:0 8px 24px rgba(100,149,237,0.35);
     transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
   }
@@ -114,10 +109,10 @@ import Base from '../layouts/Base.astro';
   .btn-primary-hero:active { transform:scale(0.96); transition:all 0.1s ease; }
   .btn-ghost-hero {
     display:flex; align-items:center; justify-content:center; gap:0.5rem;
-    padding:0.9rem 1rem;
+    padding:0.88rem 1rem;
     background:rgba(255,255,255,0.6); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
     border:1.5px solid rgba(255,255,255,0.85);
-    color:#6495ED; border-radius:0.85rem; font-weight:600; font-size:0.95rem;
+    color:#6495ED; border-radius:0.85rem; font-weight:600; font-size:0.93rem;
     box-shadow:0 4px 12px rgba(0,0,0,0.05);
     transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1);
   }
@@ -130,24 +125,24 @@ import Base from '../layouts/Base.astro';
     background:rgba(255,255,255,0.42);
     backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border:1px solid rgba(255,255,255,0.68);
-    padding:1.6rem 1.35rem; border-radius:1.4rem;
-    transition:all 0.3s ease; display:flex; flex-direction:column; gap:0.7rem;
+    padding:1.5rem 1.25rem; border-radius:1.4rem;
+    transition:all 0.3s ease; display:flex; flex-direction:column; gap:0.65rem;
     box-shadow:0 2px 16px rgba(100,149,237,0.07), inset 0 1px 0 rgba(255,255,255,0.9);
   }
   .home-card:hover { background:rgba(255,255,255,0.62); box-shadow:0 14px 36px rgba(100,149,237,0.13); transform:translateY(-3px); }
   .home-card:active { transform:scale(0.97); transition:all 0.1s ease; }
-  .home-card-icon { width:38px; height:38px; background:rgba(239,246,255,0.85); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#6495ED; transition:transform 0.3s ease; }
-  .home-card:hover .home-card-icon { transform:scale(1.12); }
-  .home-card h3 { font-family:'Playfair Display',Georgia,serif; font-size:1.05rem; font-weight:700; color:#334155; }
-  .home-card p  { font-size:0.8rem; color:#64748b; line-height:1.75; font-weight:300; }
+  .home-card-icon { width:36px; height:36px; background:rgba(239,246,255,0.85); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#6495ED; transition:transform 0.3s ease; }
+  .home-card:hover .home-card-icon { transform:scale(1.1); }
+  .home-card h3 { font-family:'Playfair Display',Georgia,serif; font-size:1.02rem; font-weight:700; color:#334155; }
+  .home-card p  { font-size:0.79rem; color:#64748b; line-height:1.72; font-weight:300; }
 
   /* Quote */
-  .home-quote { text-align:center; padding:2rem 0; opacity:0.55; }
-  .home-quote-text { font-family:'Playfair Display',Georgia,serif; font-style:italic; color:#94a3b8; font-size:0.88rem; letter-spacing:0.02em; }
+  .home-quote { text-align:center; padding:1.5rem 0; opacity:0.5; }
+  .home-quote-text { font-family:'Playfair Display',Georgia,serif; font-style:italic; color:#94a3b8; font-size:0.86rem; }
 
   @media (max-width:480px) {
     .home-cards { grid-template-columns:1fr; }
-    .hero-sub { font-size:1.05rem; max-width:300px; }
-    .hero-btns { max-width:240px; }
+    .hero-sub { font-size:1rem; max-width:300px; }
+    .hero-btns { max-width:250px; }
   }
 </style>

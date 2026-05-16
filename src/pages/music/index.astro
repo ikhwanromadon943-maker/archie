@@ -38,7 +38,6 @@ import Base from '../../layouts/Base.astro';
   </div>
 
   <audio id="audio-player"></audio>
-  <!-- Hidden audio pool buat preload -->
   <div id="audio-pool" style="display:none"></div>
 
   <div class="loading-state" id="loading"><span class="loader"></span></div>
@@ -86,17 +85,18 @@ import Base from '../../layouts/Base.astro';
   }
 
   function updateListIcons() {
-    document.querySelectorAll('.track-row').forEach((row, i) => {
+    document.querySelectorAll('.track-row').forEach((row) => {
       const playEl = row.querySelector('.track-play-icon') as HTMLElement;
       const pauseEl = row.querySelector('.track-pause-icon') as HTMLElement;
+      const trackId = row.getAttribute('data-id');
       if (!playEl || !pauseEl) return;
-      const active = i === currentIdx && isPlaying;
+      const active = allTracks[currentIdx]?.id === trackId && isPlaying;
       playEl.style.display = active ? 'none' : 'block';
       pauseEl.style.display = active ? 'block' : 'none';
     });
   }
 
-  function loadTrack(idx: number) {
+  function loadTrack(idx: number, autoPlay: boolean = true) {
     const t = allTracks[idx];
     if (!t) return;
     currentIdx = idx;
@@ -109,9 +109,12 @@ import Base from '../../layouts/Base.astro';
     mpTime.textContent = '0:00';
 
     if (t.url && preloadedAudios[idx]) {
-      // Pake preloaded audio
       audio.src = preloadedAudios[idx].src;
-      audio.play().then(() => setPlayUI(true)).catch(() => setPlayUI(false));
+      if (autoPlay) {
+        audio.play().then(() => setPlayUI(true)).catch(() => setPlayUI(false));
+      } else {
+        setPlayUI(false);
+      }
     } else {
       setPlayUI(false);
     }
@@ -120,7 +123,7 @@ import Base from '../../layouts/Base.astro';
   function preloadAllTracks() {
     audioPool.innerHTML = '';
     preloadedAudios = [];
-    allTracks.forEach((track, i) => {
+    allTracks.forEach((track) => {
       if (track.url) {
         const preAudio = document.createElement('audio');
         preAudio.src = track.url;
@@ -129,7 +132,6 @@ import Base from '../../layouts/Base.astro';
         preAudio.muted = true;
         audioPool.appendChild(preAudio);
         preloadedAudios.push(preAudio);
-        // Force load
         preAudio.load();
       } else {
         preloadedAudios.push(null as any);
@@ -145,7 +147,7 @@ import Base from '../../layouts/Base.astro';
   });
 
   audio.addEventListener('ended', () => {
-    if (currentIdx < allTracks.length - 1) loadTrack(currentIdx + 1);
+    if (currentIdx < allTracks.length - 1) loadTrack(currentIdx + 1, true);
     else setPlayUI(false);
   });
 
@@ -154,7 +156,8 @@ import Base from '../../layouts/Base.astro';
 
   document.getElementById('mp-play')!.addEventListener('click', () => {
     if (currentIdx === -1 && allTracks.length > 0) {
-      loadTrack(0);
+      // Klik pertama: load track pertama + play
+      loadTrack(0, true);
     } else if (isPlaying) {
       audio.pause();
     } else {
@@ -179,9 +182,8 @@ import Base from '../../layouts/Base.astro';
       return; 
     }
     allTracks = items;
-    renderTracks(items);
     preloadAllTracks();
-    loadTrack(0);
+    renderTracks(allTracks);
   }
 
   function renderTracks(items: any[]) {
@@ -194,11 +196,10 @@ import Base from '../../layouts/Base.astro';
     }
     empty.style.display = 'none';
 
-    items.forEach((item: any, i: number) => {
-      const realIdx = allTracks.indexOf(item);
+    items.forEach((item: any) => {
       const row = document.createElement('div');
       row.className = 'track-row';
-      row.style.cssText = `opacity:0;animation:fadeUp 0.3s ease forwards`;
+      row.setAttribute('data-id', item.id);
       row.innerHTML = `
         <img class="track-thumb" src="${item.thumbnail || ''}" alt="" style="${item.thumbnail ? '' : 'display:none'}"/>
         <div class="track-info">
@@ -213,10 +214,11 @@ import Base from '../../layouts/Base.astro';
 
       row.querySelector('.track-play-btn')!.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (currentIdx === realIdx) {
+        const idx = allTracks.findIndex(t => t.id === item.id);
+        if (currentIdx === idx) {
           isPlaying ? audio.pause() : audio.play();
         } else {
-          loadTrack(realIdx);
+          loadTrack(idx, true);
         }
       });
 
@@ -229,8 +231,9 @@ import Base from '../../layouts/Base.astro';
   const searchInput = document.getElementById('music-search') as HTMLInputElement;
   const doSearch = () => {
     const q = searchInput.value.toLowerCase().trim();
-    renderTracks(!q ? allTracks : allTracks.filter((t: any) =>
-      t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)));
+    const filtered = !q ? allTracks : allTracks.filter((t: any) =>
+      t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+    renderTracks(filtered);
   };
   searchInput.addEventListener('input', doSearch);
   document.getElementById('music-search-btn')!.addEventListener('click', doSearch);
@@ -271,7 +274,7 @@ import Base from '../../layouts/Base.astro';
   .mp-progress-fill { height:100%; background:#6495ED; border-radius:999px; width:0%; transition:width 0.3s linear; }
   .mp-time { font-size:0.6rem; font-family:monospace; color:#94a3b8; flex-shrink:0; white-space:nowrap; }
 
-  /* Track list - slim rows */
+  /* Track list - slim rows ONLY */
   .track-row {
     display:flex; align-items:center; gap:0.6rem;
     padding:0.55rem 0.5rem;

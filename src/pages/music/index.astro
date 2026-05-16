@@ -18,39 +18,22 @@ import Base from '../../layouts/Base.astro';
     </div>
   </div>
 
-
-  <!-- Mini player (muncul kalau ada lagu yang dipilih) -->
+  <!-- Mini Player -->
   <div class="mini-player" id="mini-player" style="display:none">
     <img class="mp-thumb" id="mp-thumb" src="" alt=""/>
     <div class="mp-info">
       <div class="mp-title" id="mp-title">—</div>
       <div class="mp-artist" id="mp-artist">—</div>
     </div>
-    <div class="mp-controls">
-      <button class="mp-btn" id="mp-prev" title="Previous">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-      </button>
-      <button class="mp-play-btn" id="mp-play" title="Play/Pause">
-        <svg id="mp-play-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <svg id="mp-pause-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-      </button>
-      <button class="mp-btn" id="mp-next" title="Next">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-      </button>
-    </div>
-    <!-- Progress bar -->
-    <div class="mp-progress-wrap" id="mp-progress-wrap">
-      <div class="mp-progress-bg">
-        <div class="mp-progress-fill" id="mp-fill"></div>
-      </div>
-      <span class="mp-time" id="mp-time">0:00</span>
-    </div>
+    <button class="mp-play-btn" id="mp-play" title="Play/Pause">
+      <svg id="mp-play-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <svg id="mp-pause-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    </button>
   </div>
 
   <audio id="audio-player"></audio>
 
   <div class="loading-state" id="loading"><span class="loader"></span></div>
-  <div id="music-list"></div>
   <div class="empty-state" id="empty-state" style="display:none">
     <div class="empty-icon">
       <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -66,43 +49,31 @@ import Base from '../../layouts/Base.astro';
 
   let allTracks: any[] = [];
   let currentIdx = -1;
-  let isPlaying  = false;
+  let isPlaying = false;
 
-  const audio    = document.getElementById('audio-player') as HTMLAudioElement;
-  const player   = document.getElementById('mini-player')!;
-  const mpTitle  = document.getElementById('mp-title')!;
+  const audio = document.getElementById('audio-player') as HTMLAudioElement;
+  const player = document.getElementById('mini-player')!;
+  const mpTitle = document.getElementById('mp-title')!;
   const mpArtist = document.getElementById('mp-artist')!;
-  const mpThumb  = document.getElementById('mp-thumb') as HTMLImageElement;
-  const mpFill   = document.getElementById('mp-fill')!;
-  const mpTime   = document.getElementById('mp-time')!;
-  const playIcon  = document.getElementById('mp-play-icon')!;
+  const mpThumb = document.getElementById('mp-thumb') as HTMLImageElement;
+  const playIcon = document.getElementById('mp-play-icon')!;
   const pauseIcon = document.getElementById('mp-pause-icon')!;
-
-  function formatTime(s: number) {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2,'0')}`;
-  }
 
   function setPlayUI(playing: boolean) {
     isPlaying = playing;
-    playIcon.style.display  = playing ? 'none'  : 'block';
+    playIcon.style.display = playing ? 'none' : 'block';
     pauseIcon.style.display = playing ? 'block' : 'none';
-    // highlight active card
-    document.querySelectorAll('.music-card').forEach((c,i) => {
-      c.classList.toggle('active', i === currentIdx);
-    });
   }
 
   function loadTrack(idx: number) {
     const t = allTracks[idx];
     if (!t) return;
     currentIdx = idx;
-    mpTitle.textContent  = t.title;
+    mpTitle.textContent = t.title;
     mpArtist.textContent = t.artist;
     mpThumb.src = t.thumbnail || '';
     mpThumb.style.display = t.thumbnail ? 'block' : 'none';
-    player.style.display  = 'flex';
+    player.style.display = 'flex';
 
     if (t.url) {
       audio.src = t.url;
@@ -112,115 +83,45 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  audio.addEventListener('timeupdate', () => {
-    if (!audio.duration) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    mpFill.style.width = pct + '%';
-    mpTime.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
+  document.getElementById('mp-play')!.addEventListener('click', () => {
+    if (allTracks.length === 0) return;
+    
+    if (currentIdx === -1) {
+      // First time: play first track
+      loadTrack(0);
+    } else if (isPlaying) {
+      audio.pause();
+      setPlayUI(false);
+    } else {
+      audio.play();
+      setPlayUI(true);
+    }
   });
 
   audio.addEventListener('ended', () => {
-    if (currentIdx < allTracks.length - 1) loadTrack(currentIdx + 1);
-    else setPlayUI(false);
+    if (currentIdx < allTracks.length - 1) {
+      loadTrack(currentIdx + 1);
+    } else {
+      setPlayUI(false);
+    }
   });
 
-  document.getElementById('mp-play')!.addEventListener('click', () => {
-    if (isPlaying) { audio.pause(); setPlayUI(false); }
-    else { audio.play(); setPlayUI(true); }
-  });
-  document.getElementById('mp-prev')!.addEventListener('click', () => {
-    if (currentIdx > 0) loadTrack(currentIdx - 1);
-  });
-  document.getElementById('mp-next')!.addEventListener('click', () => {
-    if (currentIdx < allTracks.length - 1) loadTrack(currentIdx + 1);
-  });
-
-  // Click progress bar to seek
-  document.getElementById('mp-progress-wrap')!.addEventListener('click', (e) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const pct  = (e.clientX - rect.left) / rect.width;
-    audio.currentTime = pct * audio.duration;
-  });
+  audio.addEventListener('pause', () => setPlayUI(false));
+  audio.addEventListener('play', () => setPlayUI(true));
 
   async function loadTracks() {
     const loading = document.getElementById('loading')!;
-    const empty   = document.getElementById('empty-state')!;
-    const { data: items, error } = await supabase.from('music').select('*').order('added_at',{ascending:false});
-    loading.style.display = 'none';
-    if (error || !items?.length) { empty.style.display='block'; return; }
-    allTracks = items;
-    renderTracks(items);
-  }
-
-  function renderTracks(items: any[]) {
-    const list  = document.getElementById('music-list')!;
     const empty = document.getElementById('empty-state')!;
-    list.innerHTML = '';
-    if (!items.length) { empty.style.display='block'; return; }
-    empty.style.display = 'none';
-
-    items.forEach((item: any, i: number) => {
-      const realIdx = allTracks.indexOf(item);
-      const card = document.createElement('div');
-      card.className = 'music-card';
-      card.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i*0.05}s forwards`;
-      card.innerHTML = `
-        ${item.thumbnail
-          ? `<img class="music-thumb" src="${item.thumbnail}" alt="${item.title}" loading="lazy"/>`
-          : `<div class="music-thumb music-thumb-ph">
-               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                 <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-               </svg>
-             </div>`}
-        <div class="music-info">
-          <div class="music-name">${item.title}</div>
-          <div class="music-artist">${item.artist}</div>
-        </div>
-        <div class="music-duration">${item.duration||'—'}</div>
-        <button class="music-play-btn" title="Play">
-          <svg class="icon-play" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <svg class="icon-pause" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-        </button>`;
-
-      card.querySelector('.music-play-btn')!.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (currentIdx === realIdx && isPlaying) {
-          audio.pause(); setPlayUI(false);
-        } else {
-          loadTrack(realIdx);
-        }
-      });
-      card.addEventListener('click', () => loadTrack(realIdx));
-
-      list.appendChild(card);
-    });
-  }
-
-  // Sync play/pause icon on active card
-  audio.addEventListener('play',  () => updateCardIcons());
-  audio.addEventListener('pause', () => updateCardIcons());
-  function updateCardIcons() {
-    document.querySelectorAll('.music-card').forEach((c, i) => {
-      const pi = c.querySelector('.icon-play')  as HTMLElement;
-      const pa = c.querySelector('.icon-pause') as HTMLElement;
-      if (!pi || !pa) return;
-      const active = i === currentIdx;
-      pi.style.display = (active && isPlaying) ? 'none'  : 'block';
-      pa.style.display = (active && isPlaying) ? 'block' : 'none';
-    });
+    const { data: items, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
+    loading.style.display = 'none';
+    if (error || !items?.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    allTracks = items;
   }
 
   loadTracks();
-
-  const searchInput = document.getElementById('music-search') as HTMLInputElement;
-  const doSearch = () => {
-    const q = searchInput.value.toLowerCase().trim();
-    renderTracks(!q ? allTracks : allTracks.filter((t: any) =>
-      t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)));
-  };
-  searchInput.addEventListener('input', doSearch);
-  document.getElementById('music-search-btn')!.addEventListener('click', doSearch);
-  searchInput.addEventListener('keydown', (e) => { if (e.key==='Enter') doSearch(); });
 </script>
 
 <style>
@@ -236,43 +137,63 @@ import Base from '../../layouts/Base.astro';
   .music-search-btn { width:42px; height:42px; border-radius:50%; background:#6495ED; color:#fff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:background 0.2s, transform 0.2s; box-shadow:0 4px 12px rgba(100,149,237,0.3); }
   .music-search-btn:hover { background:#5b89dc; transform:scale(1.05); }
 
-  /* Deco row — lebih besar dari sebelumnya */
-
-  /* Mini player */
+  /* Mini Player - Compact & Clean */
   .mini-player {
-    display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem;
-    background:rgba(255,255,255,0.72);
-    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-    border:1px solid rgba(255,255,255,0.85);
-    border-radius:18px; padding:0.85rem 1rem;
-    margin-bottom:1.25rem;
-    box-shadow:0 4px 20px rgba(100,149,237,0.1);
+    display:flex;
+    align-items:center;
+    gap:0.75rem;
+    background:rgba(255,255,255,0.8);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,0.9);
+    border-radius:16px;
+    padding:0.7rem 1rem;
+    max-width:380px;
+    margin:0 auto;
+    box-shadow:0 4px 20px rgba(100,149,237,0.12);
+    transition:all 0.3s ease;
   }
-  .mp-thumb { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0; }
-  .mp-info  { flex:1; min-width:0; }
-  .mp-title  { font-size:0.875rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .mp-artist { font-size:0.7rem; color:#94a3b8; }
-  .mp-controls { display:flex; align-items:center; gap:0.4rem; flex-shrink:0; }
-  .mp-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; color:#6495ED; background:rgba(100,149,237,0.08); border:none; cursor:pointer; transition:background 0.2s; }
-  .mp-btn:hover { background:rgba(100,149,237,0.18); }
-  .mp-play-btn { display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#6495ED; color:#fff; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(100,149,237,0.35); transition:background 0.2s, transform 0.15s; }
-  .mp-play-btn:hover { background:#5b89dc; transform:scale(1.06); }
-  .mp-progress-wrap { width:100%; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
-  .mp-progress-bg { flex:1; height:4px; background:rgba(100,149,237,0.15); border-radius:999px; overflow:hidden; }
-  .mp-progress-fill { height:100%; background:#6495ED; border-radius:999px; width:0%; transition:width 0.3s linear; }
-  .mp-time { font-size:0.6rem; font-family:monospace; color:#94a3b8; flex-shrink:0; white-space:nowrap; }
-
-  /* Track list */
-  .music-card { display:flex; align-items:center; gap:0.85rem; padding:0.85rem 0; border-bottom:1px solid rgba(226,232,240,0.7); transition:background 0.2s; cursor:pointer; border-radius:10px; padding-left:0.5rem; padding-right:0.5rem; }
-  .music-card:last-child { border-bottom:none; }
-  .music-card:hover  { background:rgba(100,149,237,0.05); }
-  .music-card.active { background:rgba(100,149,237,0.08); }
-  .music-thumb    { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; background:#f1f5f9; }
-  .music-thumb-ph { width:44px; height:44px; border-radius:8px; flex-shrink:0; background:#eff6ff; display:flex; align-items:center; justify-content:center; color:#6495ED; opacity:0.6; }
-  .music-info { flex:1; min-width:0; }
-  .music-name     { font-size:0.875rem; font-weight:500; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .music-duration { font-family:monospace; font-size:0.7rem; color:#94a3b8; flex-shrink:0; }
-  .music-play-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:rgba(100,149,237,0.1); color:#6495ED; border:none; cursor:pointer; flex-shrink:0; transition:background 0.2s, transform 0.15s; }
-  .music-play-btn:hover { background:rgba(100,149,237,0.22); transform:scale(1.1); }
-  .music-artist { font-size:0.72rem; color:#94a3b8; margin-top:0.1rem; }
+  .mp-thumb {
+    width:42px;
+    height:42px;
+    border-radius:10px;
+    object-fit:cover;
+    flex-shrink:0;
+  }
+  .mp-info {
+    flex:1;
+    min-width:0;
+  }
+  .mp-title {
+    font-size:0.85rem;
+    font-weight:600;
+    color:#1e293b;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .mp-artist {
+    font-size:0.7rem;
+    color:#94a3b8;
+    margin-top:2px;
+  }
+  .mp-play-btn {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#6495ED;
+    color:#fff;
+    border:none;
+    cursor:pointer;
+    flex-shrink:0;
+    box-shadow:0 4px 12px rgba(100,149,237,0.35);
+    transition:background 0.2s, transform 0.15s;
+  }
+  .mp-play-btn:hover {
+    background:#5b89dc;
+    transform:scale(1.06);
+  }
 </style>

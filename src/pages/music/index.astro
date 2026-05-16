@@ -38,6 +38,8 @@ import Base from '../../layouts/Base.astro';
   </div>
 
   <audio id="audio-player"></audio>
+  <!-- Hidden audio pool buat preload -->
+  <div id="audio-pool" style="display:none"></div>
 
   <div class="loading-state" id="loading"><span class="loader"></span></div>
   <div id="music-list"></div>
@@ -57,6 +59,7 @@ import Base from '../../layouts/Base.astro';
   let allTracks: any[] = [];
   let currentIdx = -1;
   let isPlaying  = false;
+  let preloadedAudios: HTMLAudioElement[] = [];
 
   const audio    = document.getElementById('audio-player') as HTMLAudioElement;
   const player   = document.getElementById('mini-player')!;
@@ -67,6 +70,7 @@ import Base from '../../layouts/Base.astro';
   const mpTime   = document.getElementById('mp-time')!;
   const playIcon  = document.getElementById('mp-play-icon')!;
   const pauseIcon = document.getElementById('mp-pause-icon')!;
+  const audioPool = document.getElementById('audio-pool')!;
 
   function formatTime(s: number) {
     const m = Math.floor(s / 60);
@@ -104,12 +108,33 @@ import Base from '../../layouts/Base.astro';
     mpFill.style.width = '0%';
     mpTime.textContent = '0:00';
 
-    if (t.url) {
-      audio.src = t.url;
+    if (t.url && preloadedAudios[idx]) {
+      // Pake preloaded audio
+      audio.src = preloadedAudios[idx].src;
       audio.play().then(() => setPlayUI(true)).catch(() => setPlayUI(false));
     } else {
       setPlayUI(false);
     }
+  }
+
+  function preloadAllTracks() {
+    audioPool.innerHTML = '';
+    preloadedAudios = [];
+    allTracks.forEach((track, i) => {
+      if (track.url) {
+        const preAudio = document.createElement('audio');
+        preAudio.src = track.url;
+        preAudio.preload = 'auto';
+        preAudio.volume = 0;
+        preAudio.muted = true;
+        audioPool.appendChild(preAudio);
+        preloadedAudios.push(preAudio);
+        // Force load
+        preAudio.load();
+      } else {
+        preloadedAudios.push(null as any);
+      }
+    });
   }
 
   audio.addEventListener('timeupdate', () => {
@@ -129,7 +154,6 @@ import Base from '../../layouts/Base.astro';
 
   document.getElementById('mp-play')!.addEventListener('click', () => {
     if (currentIdx === -1 && allTracks.length > 0) {
-      // First time: auto play track pertama
       loadTrack(0);
     } else if (isPlaying) {
       audio.pause();
@@ -156,7 +180,7 @@ import Base from '../../layouts/Base.astro';
     }
     allTracks = items;
     renderTracks(items);
-    // Auto-load track pertama biar mini player langsung muncul
+    preloadAllTracks();
     loadTrack(0);
   }
 
@@ -174,7 +198,7 @@ import Base from '../../layouts/Base.astro';
       const realIdx = allTracks.indexOf(item);
       const row = document.createElement('div');
       row.className = 'track-row';
-      row.style.cssText = `opacity:0;animation:fadeUp 0.3s ease ${i*0.03}s forwards`;
+      row.style.cssText = `opacity:0;animation:fadeUp 0.3s ease forwards`;
       row.innerHTML = `
         <img class="track-thumb" src="${item.thumbnail || ''}" alt="" style="${item.thumbnail ? '' : 'display:none'}"/>
         <div class="track-info">

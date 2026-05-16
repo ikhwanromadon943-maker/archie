@@ -9,7 +9,12 @@ import Base from '../layouts/Base.astro';
     </div>
     <h1 class="hero-title">Archie.</h1>
     <p class="hero-sub">
-      A quiet space for things meant to endure. Inspired by the spirit of <span class="hero-accent">Myosotis</span>—the Forget-Me-Not. Here, fragments of time are gathered and kept safe from the current of oblivion.
+      A quiet space for things meant to<br/>
+      endure. Inspired by the spirit of<br/>
+      <span class="hero-accent">Myosotis</span>—the Forget-Me-Not.<br/>
+      Here, fragments of time are<br/>
+      gathered and kept safe from the<br/>
+      current of oblivion.
     </p>
     <div class="hero-btns">
       <a href="/notes" class="btn-primary-hero">
@@ -72,7 +77,6 @@ import Base from '../layouts/Base.astro';
     color:#6495ED; font-size:0.76rem; font-weight:700;
     letter-spacing:0.16em; text-transform:uppercase;
   }
-  /* Title — dikecilkan dari 9.5rem ke 7rem */
   .hero-title {
     font-family:'Playfair Display',Georgia,serif;
     font-size:clamp(3.8rem,13vw,7rem);
@@ -82,13 +86,13 @@ import Base from '../layouts/Base.astro';
     filter:drop-shadow(0 2px 12px rgba(100,149,237,0.18));
   }
   .hero-sub {
-  font-size:0.92rem; font-weight:300;
-  color:#475569; line-height:1.55;
-  max-width:210px; margin-bottom:2.4rem;
-}
-  .hero-accent { color:#6495ED; font-weight:500; font-style:italic; }
+    font-size:1.15rem; font-weight:300;
+    color:#475569; line-height:1.75;
+    max-width:340px; margin-bottom:2.4rem;
+  }
+  .hero-accent { color:#6495ED; font-weight:500; font-style:italic; white-space:nowrap; }
+  .hero-accent-wrap { white-space:nowrap; }
 
-  /* Buttons — lebar sesuai subtitle */
   .hero-btns {
     display:flex; flex-direction:column;
     gap:0.75rem; width:100%; max-width:270px;
@@ -115,7 +119,6 @@ import Base from '../layouts/Base.astro';
   .btn-ghost-hero:hover  { background:rgba(255,255,255,0.88); border-color:rgba(100,149,237,0.35); transform:translateY(-3px); }
   .btn-ghost-hero:active { transform:scale(0.96); transition:all 0.1s ease; }
 
-  /* Cards */
   .home-cards { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin:2.5rem 0 3rem; }
   .home-card {
     background:rgba(255,255,255,0.42);
@@ -132,7 +135,6 @@ import Base from '../layouts/Base.astro';
   .home-card h3 { font-family:'Playfair Display',Georgia,serif; font-size:1.02rem; font-weight:700; color:#334155; }
   .home-card p  { font-size:0.79rem; color:#64748b; line-height:1.72; font-weight:300; }
 
-  /* Quote */
   .home-quote { text-align:center; padding:1.5rem 0; opacity:0.5; }
   .home-quote-text { font-family:'Playfair Display',Georgia,serif; font-style:italic; color:#94a3b8; font-size:0.86rem; }
 

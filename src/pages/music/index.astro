@@ -4,252 +4,275 @@ import Base from '../../layouts/Base.astro';
 <Base title="Music" description="Music player.">
 
   <div class="music-page">
+
     <!-- TITLE -->
     <div class="music-title">ARCHIE<span class="music-dot">.</span>MUSIC</div>
 
     <!-- SEARCH -->
     <div class="music-search-wrap">
       <span class="music-search-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </span>
-      <input type="text" id="searchInput" class="music-search-input" placeholder="Search song..." autocomplete="off"/>
-      <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
+      <input type="text" id="searchInput" class="music-search-input" placeholder="Search song or artist..." autocomplete="off"/>
+      <button id="searchBtn" class="music-search-btn" aria-label="Search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
     </div>
 
-    <!-- MINI PLAYER -->
+    <!-- MINI PLAYER (sticky) -->
     <div class="music-player" id="musicPlayer">
-      <!-- Thumbnail -->
       <div id="playerThumbWrap" class="player-thumb-wrap" style="display:none">
         <img id="playerThumb" class="player-thumb" src="" alt=""/>
       </div>
-      <!-- Info -->
+      <div class="player-thumb-ph" id="playerThumbPh">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      </div>
       <div class="player-info">
         <div id="playerTitle" class="player-title">No track selected</div>
-        <div id="playerArtist" class="player-artist">—</div>
-        <div id="playerDuration" class="player-duration"></div>
+        <div id="playerArtist" class="player-artist">Search or tap a card below</div>
       </div>
-      <!-- Controls -->
       <div class="player-controls">
-        <button id="btnPrev" class="player-btn-sm">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        <button id="btnPrev" class="player-btn-sm" title="Previous">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
         </button>
         <button id="btnPlay" class="player-btn-play">
-          <svg id="iconPlay" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          <svg id="iconPause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <svg id="iconPlay" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="iconPause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <button id="btnNext" class="player-btn-sm">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        <button id="btnNext" class="player-btn-sm" title="Next">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
       </div>
-      <!-- Progress -->
       <div id="progressBar" class="player-progress">
         <div id="progressFill" class="player-progress-fill"></div>
       </div>
       <div id="timeDisplay" class="player-time">0:00 / 0:00</div>
     </div>
 
-    <audio id="audioPlayer"></audio>
+    <!-- MUSIC CARDS GRID -->
+    <div id="musicGrid" class="music-grid">
+      <div class="music-loading">Loading tracks...</div>
+    </div>
+
   </div>
+
+  <audio id="audioPlayer" preload="none"></audio>
 
 </Base>
 
 <script>
   import { supabase } from '../../lib/supabase';
 
-  // DOM elements
-  const audio = document.getElementById('audioPlayer') as HTMLAudioElement;
-  const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-  const searchDropdown = document.getElementById('searchDropdown')!;
-  const playerTitle = document.getElementById('playerTitle')!;
-  const playerArtist = document.getElementById('playerArtist')!;
-  const playerDuration = document.getElementById('playerDuration')!;
-  const playerThumb = document.getElementById('playerThumb') as HTMLImageElement;
+  const audio         = document.getElementById('audioPlayer') as HTMLAudioElement;
+  const searchInput   = document.getElementById('searchInput') as HTMLInputElement;
+  const searchBtn     = document.getElementById('searchBtn')!;
+  const playerTitle   = document.getElementById('playerTitle')!;
+  const playerArtist  = document.getElementById('playerArtist')!;
+  const playerThumb   = document.getElementById('playerThumb') as HTMLImageElement;
   const playerThumbWrap = document.getElementById('playerThumbWrap')!;
-  const progressFill = document.getElementById('progressFill')!;
-  const progressBar = document.getElementById('progressBar')!;
-  const timeDisplay = document.getElementById('timeDisplay')!;
-  const iconPlay = document.getElementById('iconPlay')!;
-  const iconPause = document.getElementById('iconPause')!;
+  const playerThumbPh   = document.getElementById('playerThumbPh')!;
+  const progressFill  = document.getElementById('progressFill')!;
+  const progressBar   = document.getElementById('progressBar')!;
+  const timeDisplay   = document.getElementById('timeDisplay')!;
+  const iconPlay      = document.getElementById('iconPlay')!;
+  const iconPause     = document.getElementById('iconPause')!;
+  const musicGrid     = document.getElementById('musicGrid')!;
 
   let tracks: any[] = [];
-  let currentTrack: any = null;
-  let isPlaying = false;
+  let filtered: any[] = [];
+  let currentId: any = null;
 
-  // Format time
   function fmt(sec: number): string {
+    if (!sec || isNaN(sec)) return '0:00';
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
-  // Update play/pause icon
-  function updatePlayIcon(playing: boolean) {
-    isPlaying = playing;
-    iconPlay.style.display = playing ? 'none' : '';
+  // Update icon berdasarkan state audio BUKAN variable terpisah
+  function syncIcon() {
+    const playing = !audio.paused && !audio.ended && audio.currentTime > 0;
+    iconPlay.style.display  = playing ? 'none' : '';
     iconPause.style.display = playing ? '' : 'none';
   }
 
-  // Load & play track
+  function setActiveCard(id: any) {
+    document.querySelectorAll('.music-card').forEach(c => c.classList.remove('active'));
+    if (id != null) {
+      const card = document.querySelector(`.music-card[data-id="${id}"]`);
+      card?.classList.add('active');
+    }
+  }
+
   function playTrack(track: any) {
     if (!track) return;
-    currentTrack = track;
-    
-    playerTitle.textContent = track.title || 'Unknown';
-    playerArtist.textContent = track.artist || '—';
-    
-    // Duration dari metadata atau default
-    playerDuration.textContent = '';
+    currentId = track.id;
 
-    // Thumbnail
+    playerTitle.textContent  = track.title  || 'Unknown';
+    playerArtist.textContent = track.artist || 'â€”';
+
     if (track.thumbnail && (track.thumbnail.startsWith('http') || track.thumbnail.startsWith('/'))) {
       playerThumb.src = track.thumbnail;
       playerThumbWrap.style.display = '';
+      playerThumbPh.style.display   = 'none';
     } else {
       playerThumbWrap.style.display = 'none';
+      playerThumbPh.style.display   = '';
     }
 
-    // Audio
+    audio.pause();
+    audio.src = '';
+    audio.load();
     audio.src = track.url;
-    audio.play().then(() => updatePlayIcon(true)).catch(() => updatePlayIcon(false));
-    
-    searchDropdown.style.display = 'none';
-    searchInput.value = '';
+
+    // Reset progress
+    progressFill.style.width = '0%';
+    timeDisplay.textContent  = '0:00 / 0:00';
+
+    audio.play().catch(() => {});
+    setActiveCard(track.id);
   }
 
-  // Toggle play/pause
   function togglePlay() {
-    if (!currentTrack && tracks.length > 0) {
-      playTrack(tracks[0]);
+    if (!currentId) {
+      if (filtered.length > 0) playTrack(filtered[0]);
+      else if (tracks.length > 0) playTrack(tracks[0]);
       return;
     }
     if (audio.paused) {
-      audio.play();
+      audio.play().catch(() => {});
     } else {
       audio.pause();
     }
   }
 
-  // Play next
   function playNext() {
-    if (tracks.length === 0) return;
-    const idx = tracks.findIndex(t => t.id === currentTrack?.id);
-    const next = idx < tracks.length - 1 ? tracks[idx + 1] : tracks[0];
-    playTrack(next);
+    const list = filtered.length ? filtered : tracks;
+    if (!list.length) return;
+    const idx  = list.findIndex(t => t.id === currentId);
+    playTrack(idx < list.length - 1 ? list[idx + 1] : list[0]);
   }
 
-  // Play prev
   function playPrev() {
-    if (tracks.length === 0) return;
-    const idx = tracks.findIndex(t => t.id === currentTrack?.id);
-    const prev = idx > 0 ? tracks[idx - 1] : tracks[tracks.length - 1];
-    playTrack(prev);
+    const list = filtered.length ? filtered : tracks;
+    if (!list.length) return;
+    const idx  = list.findIndex(t => t.id === currentId);
+    playTrack(idx > 0 ? list[idx - 1] : list[list.length - 1]);
   }
 
-  // Audio events
+  // Audio events â€” pakai event untuk sync icon, bukan manual
+  audio.addEventListener('play',  syncIcon);
+  audio.addEventListener('pause', syncIcon);
+  audio.addEventListener('ended', () => { syncIcon(); playNext(); });
+
   audio.addEventListener('timeupdate', () => {
     if (!audio.duration || isNaN(audio.duration)) return;
     const pct = (audio.currentTime / audio.duration) * 100;
     progressFill.style.width = pct + '%';
-    timeDisplay.textContent = fmt(audio.currentTime) + ' / ' + fmt(audio.duration);
+    timeDisplay.textContent  = fmt(audio.currentTime) + ' / ' + fmt(audio.duration);
   });
 
-  audio.addEventListener('loadedmetadata', () => {
-    if (audio.duration && !isNaN(audio.duration)) {
-      playerDuration.textContent = fmt(audio.duration);
-    }
-  });
-
-  audio.addEventListener('play', () => updatePlayIcon(true));
-  audio.addEventListener('pause', () => updatePlayIcon(false));
-  audio.addEventListener('ended', playNext);
-
-  // Progress bar click
   progressBar.addEventListener('click', (e) => {
     if (!audio.duration || isNaN(audio.duration)) return;
     const rect = progressBar.getBoundingClientRect();
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
   });
 
-  // Button events
   document.getElementById('btnPlay')!.addEventListener('click', togglePlay);
   document.getElementById('btnNext')!.addEventListener('click', playNext);
   document.getElementById('btnPrev')!.addEventListener('click', playPrev);
 
-  // Search
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim();
-    if (!q) {
-      searchDropdown.style.display = 'none';
+  // Render music cards
+  function renderCards(list: any[]) {
+    if (list.length === 0) {
+      musicGrid.innerHTML = '<div class="music-empty">No tracks found.</div>';
       return;
     }
-    const filtered = tracks.filter(t =>
-      t.title?.toLowerCase().includes(q) || t.artist?.toLowerCase().includes(q)
-    );
-    if (filtered.length === 0) {
-      searchDropdown.innerHTML = '<div class="dropdown-empty">No results</div>';
-    } else {
-      searchDropdown.innerHTML = filtered.map(t => `
-        <div class="dropdown-item" data-id="${t.id}">
-          <span>${t.title}</span>
-          <span style="color:#94a3b8;font-size:0.75rem">${t.artist}</span>
+    musicGrid.innerHTML = list.map(t => `
+      <div class="music-card ${t.id === currentId ? 'active' : ''}" data-id="${t.id}">
+        <div class="mc-thumb">
+          ${t.thumbnail && (t.thumbnail.startsWith('http') || t.thumbnail.startsWith('/'))
+            ? `<img src="${t.thumbnail}" alt="${t.title}" loading="lazy"/>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
+          }
         </div>
-      `).join('');
-      searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
-        el.addEventListener('click', () => {
-          const id = (el as HTMLElement).dataset.id;
-          const track = tracks.find(t => t.id == id);
-          if (track) playTrack(track);
-        });
-      });
-    }
-    searchDropdown.style.display = 'block';
-  });
+        <div class="mc-info">
+          <div class="mc-title">${t.title || 'Unknown'}</div>
+          <div class="mc-artist">${t.artist || 'â€”'}</div>
+        </div>
+        <div class="mc-play">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+    `).join('');
 
-  // Close dropdown
-  document.addEventListener('click', (e) => {
-    if (!(e.target as HTMLElement).closest('.music-search-wrap')) {
-      searchDropdown.style.display = 'none';
-    }
-  });
+    // Card click
+    musicGrid.querySelectorAll('.music-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = (card as HTMLElement).dataset.id;
+        const track = tracks.find(t => String(t.id) === String(id));
+        if (!track) return;
+        if (String(currentId) === String(id)) {
+          togglePlay();
+        } else {
+          playTrack(track);
+        }
+      });
+    });
+  }
+
+  // Search
+  function doSearch() {
+    const q = searchInput.value.toLowerCase().trim();
+    filtered = q ? tracks.filter(t =>
+      t.title?.toLowerCase().includes(q) || t.artist?.toLowerCase().includes(q)
+    ) : [];
+    renderCards(filtered.length || q ? filtered : tracks);
+  }
+
+  searchInput.addEventListener('input', doSearch);
+  searchBtn.addEventListener('click', doSearch);
 
   // Init
   (async () => {
-    const { data, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
+    const { data } = await supabase.from('music').select('*').order('added_at', { ascending: false });
     if (data && data.length > 0) {
       tracks = data;
-      playerTitle.textContent = `${tracks.length} tracks ready`;
-      playerArtist.textContent = 'Search or press play';
+      renderCards(tracks);
+      playerTitle.textContent  = `${tracks.length} tracks ready`;
+      playerArtist.textContent = 'Tap a card to play';
     } else {
-      playerTitle.textContent = 'No tracks';
-      playerArtist.textContent = 'Add in admin panel';
+      musicGrid.innerHTML = '<div class="music-empty">No tracks yet. Add in admin panel.</div>';
     }
   })();
 </script>
 
 <style>
-  /* === CONTAINER === */
   .music-page {
-    max-width: 420px;
+    max-width: 460px;
     margin: 0 auto;
-    padding: 3rem 1rem 2rem;
+    padding: 3rem 1rem 6rem;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* === TITLE === */
+  /* TITLE */
   .music-title {
     text-align: center;
-    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-size: clamp(2rem, 10vw, 3.2rem);
     font-weight: 700;
     letter-spacing: -0.02em;
     color: #1e293b;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
   }
   .music-dot { color: #6495ED; }
 
-  /* === SEARCH === */
+  /* SEARCH */
   .music-search-wrap {
     position: relative;
-    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.25rem;
   }
   .music-search-icon {
     position: absolute;
@@ -257,146 +280,29 @@ import Base from '../../layouts/Base.astro';
     top: 50%;
     transform: translateY(-50%);
     color: #94a3b8;
-    z-index: 2;
     display: flex;
+    pointer-events: none;
+    z-index: 2;
   }
   .music-search-input {
-    width: 100%;
-    padding: 12px 16px 12px 40px;
+    flex: 1;
+    padding: 11px 16px 11px 40px;
     border: 1.5px solid #e2e8f0;
     border-radius: 50px;
     font-size: 0.875rem;
     color: #1e293b;
     background: #fff;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
   .music-search-input:focus {
     border-color: #6495ED;
-    box-shadow: 0 0 0 3px rgba(100,149,237,0.1);
+    box-shadow: 0 0 0 3px rgba(100,149,237,0.12);
   }
-  .music-search-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: 0;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    max-height: 250px;
-    overflow-y: auto;
-    z-index: 100;
-    padding: 6px;
-  }
-  .dropdown-item {
-    padding: 10px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85rem;
-    color: #1e293b;
-    transition: background 0.15s;
-  }
-  .dropdown-item:hover {
-    background: rgba(100,149,237,0.08);
-  }
-  .dropdown-empty {
-    padding: 12px;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.8rem;
-  }
-
-  /* === PLAYER === */
-  .music-player {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 18px;
-    padding: 14px 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-  }
-  
-  /* THUMBNAIL — ini kuncinya */
-  .player-thumb-wrap {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    max-width: 44px;
-    min-height: 44px;
-    max-height: 44px;
-    border-radius: 10px;
-    overflow: hidden;
+  .music-search-btn {
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f1f5f9;
-  }
-  .player-thumb {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-    object-fit: cover !important;
-    display: block !important;
-  }
-
-  /* INFO */
-  .player-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .player-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1e293b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .player-artist {
-    font-size: 0.75rem;
-    color: #94a3b8;
-  }
-  .player-duration {
-    font-size: 0.65rem;
-    color: #94a3b8;
-    font-family: monospace;
-    margin-top: 2px;
-  }
-
-  /* CONTROLS */
-  .player-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .player-btn-sm {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: #f1f5f9;
-    color: #6495ED;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .player-btn-sm:hover { background: #e2e8f0; }
-  .player-btn-play {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     border: none;
     background: #6495ED;
@@ -406,30 +312,143 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 12px rgba(100,149,237,0.35);
+    transition: background 0.2s, transform 0.15s;
+  }
+  .music-search-btn:hover  { background: #5b89dc; transform: scale(1.06); }
+  .music-search-btn:active { transform: scale(0.95); }
+
+  /* PLAYER */
+  .music-player {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    margin-bottom: 1.5rem;
+    position: sticky;
+    top: 70px;
+    z-index: 10;
+  }
+  .player-thumb-wrap {
+    width: 44px; height: 44px;
+    min-width: 44px; border-radius: 10px;
+    overflow: hidden; flex-shrink: 0;
+    background: #f1f5f9;
+  }
+  .player-thumb {
+    width: 44px; height: 44px;
+    object-fit: cover; display: block;
+  }
+  .player-thumb-ph {
+    width: 44px; height: 44px;
+    min-width: 44px; border-radius: 10px;
+    background: #f1f5f9; flex-shrink: 0;
+    display: flex; align-items: center;
+    justify-content: center; color: #94a3b8;
+  }
+  .player-info { flex: 1; min-width: 0; }
+  .player-title {
+    font-size: 0.875rem; font-weight: 600;
+    color: #1e293b; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .player-artist { font-size: 0.72rem; color: #94a3b8; margin-top: 1px; }
+  .player-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .player-btn-sm {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: #f1f5f9; color: #6495ED;
+    cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: background 0.15s;
+  }
+  .player-btn-sm:hover { background: #e2e8f0; }
+  .player-btn-play {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: none; background: #6495ED; color: #fff;
+    cursor: pointer; display: flex; align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(100,149,237,0.35);
+    transition: background 0.15s, transform 0.15s;
   }
   .player-btn-play:hover { background: #5b89dc; transform: scale(1.05); }
-
-  /* PROGRESS */
   .player-progress {
-    width: 100%;
-    height: 4px;
-    background: #f1f5f9;
-    border-radius: 10px;
-    cursor: pointer;
-    overflow: hidden;
+    width: 100%; height: 4px; background: #f1f5f9;
+    border-radius: 10px; cursor: pointer; overflow: hidden;
   }
   .player-progress-fill {
-    height: 100%;
-    background: #6495ED;
-    border-radius: 10px;
-    width: 0%;
+    height: 100%; background: #6495ED;
+    border-radius: 10px; width: 0%;
     transition: width 0.1s linear;
   }
   .player-time {
-    width: 100%;
-    font-size: 0.65rem;
-    font-family: monospace;
-    color: #94a3b8;
+    width: 100%; font-size: 0.65rem;
+    font-family: monospace; color: #94a3b8;
     text-align: right;
+  }
+
+  /* MUSIC GRID */
+  .music-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .music-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1.5px solid #f1f5f9;
+    border-radius: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .music-card:hover {
+    border-color: rgba(100,149,237,0.3);
+    background: rgba(100,149,237,0.03);
+    transform: translateX(3px);
+  }
+  .music-card.active {
+    border-color: #6495ED;
+    background: rgba(100,149,237,0.07);
+  }
+  .mc-thumb {
+    width: 40px; height: 40px;
+    min-width: 40px; border-radius: 9px;
+    overflow: hidden; background: #f1f5f9;
+    display: flex; align-items: center;
+    justify-content: center; color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .mc-thumb img {
+    width: 40px; height: 40px;
+    object-fit: cover; display: block;
+  }
+  .mc-info { flex: 1; min-width: 0; }
+  .mc-title {
+    font-size: 0.85rem; font-weight: 600;
+    color: #1e293b; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .mc-artist {
+    font-size: 0.72rem; color: #94a3b8; margin-top: 1px;
+  }
+  .mc-play {
+    width: 28px; height: 28px;
+    border-radius: 50%; background: #f1f5f9;
+    display: flex; align-items: center;
+    justify-content: center; color: #6495ED;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .music-card:hover .mc-play  { background: rgba(100,149,237,0.15); }
+  .music-card.active .mc-play { background: #6495ED; color: #fff; }
+
+  .music-loading, .music-empty {
+    text-align: center; padding: 3rem 0;
+    color: #94a3b8; font-size: 0.85rem;
   }
 </style>

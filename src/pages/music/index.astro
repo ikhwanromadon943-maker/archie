@@ -16,9 +16,11 @@ import Base from '../../layouts/Base.astro';
     </div>
   </div>
 
-  <!-- Mini player -->
+  <!-- Mini player - thumbnail dibungkus div untuk isolasi -->
   <div class="mini-player" id="mini-player">
-    <img class="mp-thumb" id="mp-thumb" src="" alt=""/>
+    <div class="mp-thumb-wrap">
+      <img class="mp-thumb" id="mp-thumb" src="" alt="" style="display:none;"/>
+    </div>
     <div class="mp-info">
       <div class="mp-title" id="mp-title">Press play to start</div>
       <div class="mp-artist" id="mp-artist">—</div>
@@ -82,10 +84,9 @@ import Base from '../../layouts/Base.astro';
     mpTitle.textContent = t.title;
     mpArtist.textContent = t.artist;
     
-    // Set thumbnail dengan fallback
     if (t.thumbnail && t.thumbnail.startsWith('http')) {
       mpThumb.src = t.thumbnail;
-      mpThumb.style.display = '';
+      mpThumb.style.display = 'block';
     } else {
       mpThumb.src = '';
       mpThumb.style.display = 'none';
@@ -99,7 +100,6 @@ import Base from '../../layouts/Base.astro';
       audio.play().then(() => setUI(true)).catch(() => setUI(false));
     }
     
-    // Tutup dropdown
     dropdown.style.display = 'none';
   }
 
@@ -139,7 +139,6 @@ import Base from '../../layouts/Base.astro';
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
   });
 
-  // Search input handler
   searchInput.addEventListener('input', () => {
     const query = searchInput.value.toLowerCase().trim();
     if (query === '') {
@@ -159,7 +158,6 @@ import Base from '../../layouts/Base.astro';
         return `<div class="search-item" data-index="${idx}">${t.title} — ${t.artist}</div>`;
       }).join('');
       
-      // Click handler untuk setiap item
       dropdown.querySelectorAll('.search-item').forEach(item => {
         item.addEventListener('click', () => {
           const idx = parseInt((item as HTMLElement).getAttribute('data-index') || '0');
@@ -172,20 +170,18 @@ import Base from '../../layouts/Base.astro';
     dropdown.style.display = 'block';
   });
 
-  // Tutup dropdown saat klik di luar
   document.addEventListener('click', (e) => {
     if (!searchInput.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
       dropdown.style.display = 'none';
     }
   });
 
-  // Load tracks dari Supabase
   (async () => {
     const { data, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
     if (data && data.length > 0) {
       allTracks.push(...data);
       mpTitle.textContent = data.length + ' tracks loaded';
-      mpArtist.textContent = 'Click play to start';
+      mpArtist.textContent = 'Click play or search';
     } else {
       mpTitle.textContent = 'No tracks found';
       mpArtist.textContent = 'Add tracks in admin panel';
@@ -194,16 +190,36 @@ import Base from '../../layouts/Base.astro';
 </script>
 
 <style>
-  /* Reset semua gambar di dalam halaman ini */
-  .mp-thumb,
-  .mp-thumb img {
-    max-width: 40px !important;
-    max-height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
+  /* === ISOLASI THUMBNAIL DENGAN WRAPPER === */
+  .mp-thumb-wrap {
     width: 40px !important;
     height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(100,149,237,0.08);
+  }
+  
+  /* Gambar di dalam wrapper dipaksa kecil */
+  .mp-thumb-wrap img,
+  .mp-thumb,
+  #mp-thumb {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
     object-fit: cover !important;
+    display: block !important;
+    border-radius: 0 !important;
     flex-shrink: 0 !important;
   }
 
@@ -216,7 +232,6 @@ import Base from '../../layouts/Base.astro';
   .music-search-input { width: 100%; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); border: 1.5px solid rgba(255,255,255,0.85); border-radius: 999px; padding: 0.7rem 1rem 0.7rem 2.5rem; font-size: 0.875rem; color: #1e293b; outline: none; }
   .music-search-input:focus { border-color: #6495ED; box-shadow: 0 0 0 3px rgba(100,149,237,0.12); }
 
-  /* Dropdown */
   .music-search-dropdown {
     position: absolute;
     top: calc(100% + 8px);
@@ -254,23 +269,12 @@ import Base from '../../layouts/Base.astro';
     text-align: center;
   }
 
-  /* Mini Player */
   .mini-player {
     display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
     background: rgba(255,255,255,0.72); backdrop-filter: blur(20px);
     border: 1px solid rgba(255,255,255,0.85); border-radius: 18px;
     padding: 0.85rem 1rem; margin: 0 auto; max-width: 420px;
     box-shadow: 0 4px 20px rgba(100,149,237,0.1);
-  }
-  .mp-thumb { 
-    width: 40px !important; 
-    height: 40px !important; 
-    min-width: 40px !important;
-    max-width: 40px !important;
-    border-radius: 8px !important; 
-    object-fit: cover !important; 
-    flex-shrink: 0 !important;
-    display: block;
   }
   .mp-info { flex: 1; min-width: 0; }
   .mp-title { font-size: 0.875rem; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

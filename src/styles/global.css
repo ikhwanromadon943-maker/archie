@@ -177,8 +177,6 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .admin-card-body   { padding:1.1rem }
 .delete-btn { background:none; border:1px solid #fecaca; color:#ef4444; padding:0.15rem 0.5rem; border-radius:var(--r-sm); font-size:0.62rem; font-family:var(--font-mono); cursor:pointer; transition:all var(--ease) }
 .delete-btn:hover { background:#fef2f2 }
-.save-msg    { font-family:var(--font-mono); font-size:0.7rem; margin-left:0.5rem }
-.status-badge{ font-family:var(--font-mono); font-size:0.7rem; color:var(--green) }
 
 /* Forms */
 .form-group   { margin-bottom:1rem }

@@ -48,9 +48,9 @@ body.page-out main { animation:pageOut 0.2s ease forwards }
 body::before {
   content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
-    linear-gradient(to right, rgba(30,41,59,0.12) 1.5px, transparent 1.5px),
-    linear-gradient(to bottom, rgba(30,41,59,0.12) 1.5px, transparent 1.5px);
-  background-size: 96px 96px;
+    linear-gradient(to right, rgba(30,41,59,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30,41,59,0.1) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 /* Flowers */
@@ -73,7 +73,7 @@ body::before {
   backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   border-bottom:1px solid var(--border);
 }
-.nav-logo { font-family:var(--font-serif); font-size:1.4rem; font-weight:700; color:var(--blue); letter-spacing:-0.02em; line-height:1; transition:opacity var(--ease) }
+.nav-logo { font-family:var(--font-serif); font-size:1.75rem; font-weight:700; color:var(--blue); letter-spacing:-0.02em; line-height:1; transition:opacity var(--ease) }
 .nav-logo:hover { opacity:0.75 }
 .nav-logo .logo-dot { color:#94a3b8 }
 

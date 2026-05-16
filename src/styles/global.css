@@ -165,34 +165,6 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .gallery-like-btn:hover svg { transform:scale(1.2) }
 .gallery-like-btn.liked svg { fill:#ef4444; stroke:#ef4444 }
 
-/* ── MUSIC (JS-rendered, must be global) ── */
-.music-card { display:flex; align-items:center; gap:0.85rem; padding:0.85rem 0.5rem; border-bottom:1px solid rgba(226,232,240,0.7); cursor:pointer; border-radius:10px; transition:background 0.2s }
-.music-card:last-child { border-bottom:none }
-.music-card:hover  { background:rgba(100,149,237,0.05) }
-.music-card.active { background:rgba(100,149,237,0.08) }
-.music-thumb    { width:44px; height:44px; border-radius:8px; object-fit:cover; flex-shrink:0; background:#f1f5f9 }
-.music-thumb-ph { width:44px; height:44px; border-radius:8px; flex-shrink:0; background:#eff6ff; display:flex; align-items:center; justify-content:center; color:#6495ED; opacity:0.6 }
-.music-info     { flex:1; min-width:0 }
-.music-name     { font-size:0.875rem; font-weight:500; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.music-artist   { font-size:0.72rem; color:#94a3b8; margin-top:0.1rem }
-.music-duration { font-family:var(--font-mono); font-size:0.7rem; color:#94a3b8; flex-shrink:0 }
-.music-play-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:rgba(100,149,237,0.1); color:#6495ED; border:none; cursor:pointer; flex-shrink:0; transition:background 0.2s,transform 0.15s }
-.music-play-btn:hover { background:rgba(100,149,237,0.22); transform:scale(1.1) }
-.mini-player { display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem; background:rgba(255,255,255,0.72); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.85); border-radius:18px; padding:0.85rem 1rem; margin-bottom:1.25rem; box-shadow:0 4px 20px rgba(100,149,237,0.1) }
-.mp-thumb  { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0 }
-.mp-info   { flex:1; min-width:0 }
-.mp-title  { font-size:0.875rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.mp-artist { font-size:0.7rem; color:#94a3b8 }
-.mp-controls { display:flex; align-items:center; gap:0.4rem; flex-shrink:0 }
-.mp-btn { display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; color:#6495ED; background:rgba(100,149,237,0.08); border:none; cursor:pointer; transition:background 0.2s }
-.mp-btn:hover { background:rgba(100,149,237,0.18) }
-.mp-play-btn { display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:50%; background:#6495ED; color:#fff; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(100,149,237,0.35); transition:background 0.2s,transform 0.15s }
-.mp-play-btn:hover { background:#5b89dc; transform:scale(1.06) }
-.mp-progress-wrap { width:100%; cursor:pointer; display:flex; align-items:center; gap:0.5rem }
-.mp-progress-bg   { flex:1; height:4px; background:rgba(100,149,237,0.15); border-radius:999px; overflow:hidden }
-.mp-progress-fill { height:100%; background:#6495ED; border-radius:999px; width:0%; transition:width 0.3s linear }
-.mp-time { font-size:0.6rem; font-family:var(--font-mono); color:#94a3b8; flex-shrink:0; white-space:nowrap }
-
 /* ── Admin ── */
 .admin-tabs { display:flex; gap:0.2rem; margin-bottom:2rem; padding-bottom:1rem; border-bottom:1px solid var(--border); overflow-x:auto }
 .admin-tab { padding:0.35rem 0.85rem; font-size:0.72rem; font-family:var(--font-mono); border-radius:var(--r-sm); border:1px solid transparent; color:var(--text-mute); background:none; cursor:pointer; white-space:nowrap; transition:all var(--ease) }
@@ -221,26 +193,6 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .code-copy    { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.4); padding:0.15rem 0.55rem; border-radius:5px; font-family:var(--font-mono); font-size:0.62rem; cursor:pointer; transition:all var(--ease) }
 .code-copy:hover { background:rgba(255,255,255,0.14); color:#fff }
 .code-body    { padding:1.25rem; overflow-x:auto; font-size:0.79rem; line-height:1.75; color:#94a3b8; font-weight:300 }
-
-/* Vault */
-.vault-wrap { display:flex; align-items:center; justify-content:center; min-height:65vh }
-.vault-card { background:rgba(255,255,255,0.72); backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px); border:1px solid rgba(255,255,255,0.85); border-radius:28px; padding:2.75rem 2.25rem; text-align:center; width:100%; max-width:360px; box-shadow:0 8px 40px rgba(100,149,237,0.12),0 2px 8px rgba(0,0,0,0.04); position:relative; overflow:hidden }
-.vault-card::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; background:rgba(100,149,237,0.1); border-radius:50%; filter:blur(50px); pointer-events:none }
-.vault-card::after  { content:''; position:absolute; bottom:-60px; left:-60px; width:180px; height:180px; background:rgba(180,160,240,0.07); border-radius:50%; filter:blur(50px); pointer-events:none }
-.vault-icon-wrap { width:70px; height:70px; border-radius:50%; background:linear-gradient(135deg,#eef4ff,#fff); border:1px solid rgba(100,149,237,0.25); display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; position:relative; z-index:1; box-shadow:0 4px 16px rgba(100,149,237,0.15); transition:transform 0.3s ease }
-.vault-card:hover .vault-icon-wrap { transform:scale(1.08) }
-.vault-card h2  { font-family:var(--font-serif); font-size:1.65rem; font-weight:700; color:var(--text); margin-bottom:0.3rem; position:relative; z-index:1 }
-.vault-sub      { font-size:0.78rem; color:var(--text-mute); margin-bottom:1.75rem; position:relative; z-index:1 }
-.pin-dots-wrap  { cursor:text; margin-bottom:1.25rem; position:relative; z-index:1 }
-.pin-dots       { display:flex; gap:10px; justify-content:center; padding:0.5rem 0 }
-@keyframes shake { 0%,100%{transform:translate(0)} 25%{transform:translate(-5px)} 75%{transform:translate(5px)} }
-.pin-dots.shake { animation:shake 0.4s cubic-bezier(.36,.07,.19,.97) both }
-.pin-dot        { width:11px; height:11px; border-radius:50%; background:rgba(203,213,225,0.8); transition:background 0.15s ease,transform 0.15s ease }
-.pin-dot.filled { background:var(--blue); transform:scale(1.15) }
-.vault-input    { position:absolute; opacity:0; pointer-events:none; width:1px; height:1px }
-.vault-error    { font-size:0.72rem; font-family:var(--font-mono); color:var(--red); min-height:1.4em; margin-bottom:0.6rem; position:relative; z-index:1 }
-.vault-btn      { width:100%; padding:0.9rem; background:var(--blue); color:#fff; border:none; border-radius:var(--r-xl); font-size:0.72rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; transition:all var(--ease); box-shadow:0 4px 18px rgba(100,149,237,0.38); position:relative; z-index:1 }
-.vault-btn:hover { background:var(--blue-hover); transform:translateY(-1px) }
 
 /* Loading / Empty */
 .loading-state { display:flex; justify-content:center; padding:4rem 0 }

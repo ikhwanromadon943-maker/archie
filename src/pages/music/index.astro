@@ -129,6 +129,7 @@ import Base from '../../layouts/Base.astro';
 
   document.getElementById('mp-play')!.addEventListener('click', () => {
     if (currentIdx === -1 && allTracks.length > 0) {
+      // First time: auto play track pertama
       loadTrack(0);
     } else if (isPlaying) {
       audio.pause();
@@ -149,16 +150,24 @@ import Base from '../../layouts/Base.astro';
     const empty   = document.getElementById('empty-state')!;
     const { data: items, error } = await supabase.from('music').select('*').order('added_at',{ascending:false});
     loading.style.display = 'none';
-    if (error || !items?.length) { empty.style.display='block'; return; }
+    if (error || !items?.length) { 
+      empty.style.display = 'block'; 
+      return; 
+    }
     allTracks = items;
     renderTracks(items);
+    // Auto-load track pertama biar mini player langsung muncul
+    loadTrack(0);
   }
 
   function renderTracks(items: any[]) {
     const list  = document.getElementById('music-list')!;
     const empty = document.getElementById('empty-state')!;
     list.innerHTML = '';
-    if (!items.length) { empty.style.display='block'; return; }
+    if (!items.length) { 
+      empty.style.display = 'block'; 
+      return; 
+    }
     empty.style.display = 'none';
 
     items.forEach((item: any, i: number) => {
@@ -219,7 +228,7 @@ import Base from '../../layouts/Base.astro';
 
   /* Mini player */
   .mini-player {
-    display:flex; align-items:center; gap:0.75rem;
+    display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;
     background:rgba(255,255,255,0.72);
     backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
     border:1px solid rgba(255,255,255,0.85);

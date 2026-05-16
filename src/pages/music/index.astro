@@ -8,12 +8,14 @@ import Base from '../../layouts/Base.astro';
     <div class="music-title">ARCHIE<span class="music-dot">.</span>MUSIC</div>
 
     <!-- SEARCH -->
-    <div class="music-search-wrap">
-      <span class="music-search-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6495ED" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </span>
-      <input type="text" id="searchInput" class="music-search-input" placeholder="Search song..." autocomplete="off"/>
-      <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
+    <div class="music-search-row">
+      <div class="music-search-icon-big">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6495ED" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <div class="music-search-wrap">
+        <input type="text" id="searchInput" class="music-search-input" placeholder="Search song..." autocomplete="off"/>
+        <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
+      </div>
     </div>
 
     <!-- MINI PLAYER -->
@@ -44,11 +46,8 @@ import Base from '../../layouts/Base.astro';
       <div id="timeDisplay" class="player-time">0:00 / 0:00</div>
     </div>
 
-    <!-- ALL TRACKS LIST -->
-    <div class="tracks-section" id="tracksSection">
-      <div class="tracks-heading">All Tracks</div>
-      <div id="tracksList" class="tracks-list"></div>
-    </div>
+    <!-- TRACKS LIST -->
+    <div id="tracksList" class="tracks-list"></div>
 
     <audio id="audioPlayer"></audio>
   </div>
@@ -90,8 +89,17 @@ import Base from '../../layouts/Base.astro';
   }
 
   function highlightActiveTrack(trackId: string | null) {
-    document.querySelectorAll('.track-row').forEach(el => {
+    document.querySelectorAll('.track-item').forEach(el => {
       el.classList.toggle('active', (el as HTMLElement).dataset.id === trackId);
+    });
+    // Update icon play/pause di track yang aktif
+    document.querySelectorAll('.track-item-play-icon').forEach(icon => {
+      const parent = icon.closest('.track-item') as HTMLElement;
+      if (parent && parent.dataset.id === trackId && isPlaying) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      } else {
+        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      }
     });
   }
 
@@ -144,29 +152,30 @@ import Base from '../../layouts/Base.astro';
 
   function renderAllTracks() {
     if (tracks.length === 0) {
-      tracksList.innerHTML = '<div class="tracks-empty">No tracks available</div>';
+      tracksList.innerHTML = '';
       return;
     }
 
-    tracksList.innerHTML = tracks.map((t, i) => `
-      <div class="track-row" data-id="${t.id}" data-index="${i}">
-        <div class="track-row-thumb">
+    tracksList.innerHTML = tracks.map(t => `
+      <div class="track-item" data-id="${t.id}">
+        <div class="track-item-thumb">
           ${t.thumbnail 
-            ? `<img src="${t.thumbnail}" alt="" onerror="this.parentElement.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#94a3b8\\' stroke-width=\\'2\\'><path d=\\'M9 18V5l12-2v13\\'/><circle cx=\\'6\\' cy=\\'18\\' r=\\'3\\'/><circle cx=\\'18\\' cy=\\'16\\' r=\\'3\\'/></svg>';"/>`
-            : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
-          }
+            ? `<img src="${t.thumbnail}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='';"/>`
+            : ''}
+          <svg class="track-item-thumb-placeholder" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="${t.thumbnail ? 'display:none' : ''}"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         </div>
-        <div class="track-row-info">
-          <div class="track-row-title">${t.title}</div>
-          <div class="track-row-artist">${t.artist}</div>
+        <div class="track-item-info">
+          <div class="track-item-title">${t.title}</div>
+          <div class="track-item-artist">${t.artist}</div>
         </div>
-        <button class="track-row-play-btn" data-id="${t.id}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <button class="track-item-btn" data-id="${t.id}">
+          <svg class="track-item-play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </button>
       </div>
     `).join('');
 
-    tracksList.querySelectorAll('.track-row').forEach(row => {
+    // Click handlers
+    tracksList.querySelectorAll('.track-item').forEach(row => {
       row.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target.closest('button')) return;
@@ -182,7 +191,7 @@ import Base from '../../layouts/Base.astro';
       });
     });
 
-    tracksList.querySelectorAll('.track-row-play-btn').forEach(btn => {
+    tracksList.querySelectorAll('.track-item-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = (btn as HTMLElement).dataset.id;
@@ -210,8 +219,14 @@ import Base from '../../layouts/Base.astro';
     }
   });
 
-  audio.addEventListener('play', () => updatePlayIcon(true));
-  audio.addEventListener('pause', () => updatePlayIcon(false));
+  audio.addEventListener('play', () => {
+    updatePlayIcon(true);
+    highlightActiveTrack(currentTrack?.id);
+  });
+  audio.addEventListener('pause', () => {
+    updatePlayIcon(false);
+    highlightActiveTrack(currentTrack?.id);
+  });
   audio.addEventListener('ended', playNext);
 
   progressBar.addEventListener('click', (e) => {
@@ -239,7 +254,7 @@ import Base from '../../layouts/Base.astro';
       searchDropdown.innerHTML = filtered.map(t => `
         <div class="dropdown-item" data-id="${t.id}">
           <span>${t.title}</span>
-          <span style="color:#94a3b8;font-size:0.75rem">${t.artist}</span>
+          <span class="dropdown-artist">${t.artist}</span>
         </div>
       `).join('');
       searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
@@ -263,13 +278,10 @@ import Base from '../../layouts/Base.astro';
     const { data, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
     if (data && data.length > 0) {
       tracks = data;
-      playerTitle.textContent = `${tracks.length} tracks loaded`;
-      playerArtist.textContent = 'Choose a track below';
       renderAllTracks();
     } else {
-      playerTitle.textContent = 'No tracks found';
+      playerTitle.textContent = 'No tracks';
       playerArtist.textContent = 'Add in admin panel';
-      tracksList.innerHTML = '<div class="tracks-empty">No tracks available</div>';
     }
   })();
 </script>
@@ -291,22 +303,31 @@ import Base from '../../layouts/Base.astro';
   }
   .music-dot { color: #6495ED; }
 
-  /* SEARCH */
-  .music-search-wrap {
-    position: relative;
+  /* SEARCH ROW */
+  .music-search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 1.5rem;
   }
-  .music-search-icon {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
+  .music-search-icon-big {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 50%;
+    background: rgba(100,149,237,0.1);
     display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .music-search-wrap {
+    flex: 1;
+    position: relative;
   }
   .music-search-input {
     width: 100%;
-    padding: 12px 16px 12px 40px;
+    padding: 12px 16px;
     border: 1.5px solid #e2e8f0;
     border-radius: 50px;
     font-size: 0.875rem;
@@ -347,6 +368,10 @@ import Base from '../../layouts/Base.astro';
   .dropdown-item:hover {
     background: rgba(100,149,237,0.08);
   }
+  .dropdown-artist {
+    color: #94a3b8;
+    font-size: 0.75rem;
+  }
   .dropdown-empty {
     padding: 12px;
     text-align: center;
@@ -365,7 +390,7 @@ import Base from '../../layouts/Base.astro';
     border-radius: 18px;
     padding: 14px 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
   .player-thumb-wrap {
     width: 44px;
@@ -471,24 +496,13 @@ import Base from '../../layouts/Base.astro';
   }
 
   /* TRACKS LIST */
-  .tracks-section {
-    margin-top: 0.5rem;
-  }
-  .tracks-heading {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
-    padding-left: 4px;
-  }
   .tracks-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-top: 0.5rem;
   }
-  .track-row {
+  .track-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -497,16 +511,16 @@ import Base from '../../layouts/Base.astro';
     cursor: pointer;
     transition: background 0.15s;
   }
-  .track-row:hover {
+  .track-item:hover {
     background: rgba(100,149,237,0.05);
   }
-  .track-row.active {
+  .track-item.active {
     background: rgba(100,149,237,0.1);
   }
-  .track-row.active .track-row-title {
+  .track-item.active .track-item-title {
     color: #6495ED;
   }
-  .track-row-thumb {
+  .track-item-thumb {
     width: 36px;
     height: 36px;
     min-width: 36px;
@@ -520,19 +534,22 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    position: relative;
   }
-  .track-row-thumb img {
+  .track-item-thumb img {
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
     max-width: 36px !important;
     object-fit: cover !important;
+    position: absolute;
+    inset: 0;
   }
-  .track-row-info {
+  .track-item-info {
     flex: 1;
     min-width: 0;
   }
-  .track-row-title {
+  .track-item-title {
     font-size: 0.85rem;
     font-weight: 500;
     color: #1e293b;
@@ -540,13 +557,13 @@ import Base from '../../layouts/Base.astro';
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .track-row-artist {
+  .track-item-artist {
     font-size: 0.7rem;
     color: #94a3b8;
   }
-  .track-row-play-btn {
-    width: 30px;
-    height: 30px;
+  .track-item-btn {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     border: none;
     background: transparent;
@@ -557,19 +574,13 @@ import Base from '../../layouts/Base.astro';
     justify-content: center;
     flex-shrink: 0;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, background 0.15s;
   }
-  .track-row:hover .track-row-play-btn,
-  .track-row.active .track-row-play-btn {
+  .track-item:hover .track-item-btn,
+  .track-item.active .track-item-btn {
     opacity: 1;
   }
-  .track-row-play-btn:hover {
+  .track-item-btn:hover {
     background: rgba(100,149,237,0.12);
-  }
-  .tracks-empty {
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.85rem;
-    padding: 2rem;
   }
 </style>

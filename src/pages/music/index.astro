@@ -82,13 +82,14 @@ function syncIco() {
   const p = !audio.paused && !audio.ended;
   icoPlay.style.display  = p ? 'none' : '';
   icoPause.style.display = p ? '' : 'none';
-  document.querySelectorAll<HTMLElement>('.sp-track').forEach(el => {
+  document.querySelectorAll<HTMLElement>('.sp-card').forEach(el => {
     const active = el.dataset.id === String(currentId);
     el.classList.toggle('active', active);
-    const ico = el.querySelector('.sp-track-ico')!;
+    const ico = el.querySelector('.sp-card-ico')!;
+    if (!ico) return;
     ico.innerHTML = active && p
-      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
-      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+      : `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
   });
 }
 
@@ -139,26 +140,36 @@ document.getElementById('btnPrev')!.addEventListener('click', playPrev);
 
 function renderTracks(list: any[]) {
   if (!list.length) { trackList.innerHTML = `<div class="sp-empty">No tracks found.</div>`; return; }
-  trackList.innerHTML = list.map((t,i) => `
-    <div class="sp-track ${String(t.id)===String(currentId)?'active':''}" data-id="${t.id}">
-      <span class="sp-track-num">${i+1}</span>
-      <div class="sp-track-thumb">
+  const playing = !audio.paused && !audio.ended;
+  trackList.innerHTML = list.map((t,i) => {
+    const isActive = String(t.id) === String(currentId);
+    return `
+    <div class="sp-card ${isActive ? 'active' : ''}" data-id="${t.id}">
+      <span class="sp-card-num">${i+1}</span>
+      <div class="sp-card-thumb">
         ${t.thumbnail
           ? `<img src="${t.thumbnail}" alt="${t.title}" loading="lazy"/>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`}
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`}
       </div>
-      <div class="sp-track-info">
-        <div class="sp-track-title">${t.title||'Unknown'}</div>
-        <div class="sp-track-artist">${t.artist||'—'}</div>
+      <div class="sp-card-info">
+        <div class="sp-card-title">${t.title||'Unknown'}</div>
+        <div class="sp-card-artist">${t.artist||'—'}</div>
       </div>
-      <span class="sp-track-ico"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
-    </div>
-  `).join('');
-  trackList.querySelectorAll<HTMLElement>('.sp-track').forEach(el => {
+      <div class="sp-card-right">
+        <span class="sp-card-dur">${t.duration||''}</span>
+        <span class="sp-card-ico">
+          ${isActive && playing
+            ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`
+            : `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`}
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+  trackList.querySelectorAll<HTMLElement>('.sp-card').forEach(el => {
     el.addEventListener('click', () => {
-      const t = allTracks.find(x => String(x.id)===el.dataset.id);
+      const t = allTracks.find(x => String(x.id) === el.dataset.id);
       if (!t) return;
-      String(currentId)===el.dataset.id ? togglePlay() : playTrack(t);
+      String(currentId) === el.dataset.id ? togglePlay() : playTrack(t);
     });
   });
 }
@@ -233,57 +244,70 @@ document.getElementById('searchBtn')!.addEventListener('click', () => renderTrac
   .sp-search-btn:hover  { background: #5b89dc; transform: scale(1.06); }
   .sp-search-btn:active { transform: scale(0.94); }
 
-  /* TRACK LIST */
-  .sp-tracklist { display: flex; flex-direction: column; gap: 1px; }
+  /* CARD LIST */
+  .sp-tracklist { display: flex; flex-direction: column; gap: 4px; }
 
-  .sp-track {
+  .sp-card {
     display: flex; align-items: center; gap: 10px;
-    padding: 7px 8px; border-radius: 10px;
+    padding: 7px 10px; border-radius: 12px;
     cursor: pointer; transition: background .15s;
-    position: relative;
+    border: 1px solid transparent;
   }
-  .sp-track:hover  { background: rgba(100,149,237,.07); }
-  .sp-track.active { background: rgba(100,149,237,.12); }
+  .sp-card:hover  { background: rgba(100,149,237,.06); border-color: rgba(100,149,237,.1); }
+  .sp-card.active { background: rgba(100,149,237,.1); border-color: rgba(100,149,237,.2); }
 
-  .sp-track-num {
-    width: 20px; text-align: center;
-    font-size: 0.75rem; color: #94a3b8;
-    font-family: monospace; flex-shrink: 0;
+  .sp-card-num {
+    width: 18px; text-align: center;
+    font-size: 0.72rem; color: #94a3b8;
+    font-family: monospace; flex-shrink: 0; line-height: 1;
   }
-  .sp-track.active .sp-track-num { color: #6495ED; }
-  .sp-track:hover .sp-track-num  { visibility: hidden; }
+  .sp-card.active .sp-card-num { color: #6495ED; }
+  .sp-card:hover .sp-card-num  { visibility: hidden; }
 
-  .sp-track-thumb {
-    width: 42px; height: 42px; min-width: 42px;
-    border-radius: 8px; overflow: hidden;
+  .sp-card-thumb {
+    width: 36px !important; height: 36px !important;
+    min-width: 36px !important; max-width: 36px !important;
+    min-height: 36px !important; max-height: 36px !important;
+    border-radius: 7px; overflow: hidden;
     background: rgba(100,149,237,.08);
     display: flex; align-items: center;
     justify-content: center; color: #94a3b8;
     flex-shrink: 0;
   }
-  .sp-track-thumb img { width:42px;height:42px;object-fit:cover;display:block; }
-
-  .sp-track-info { flex: 1; min-width: 0; }
-  .sp-track-title {
-    font-size: 0.85rem; font-weight: 600; color: #1e293b;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .sp-track.active .sp-track-title { color: #6495ED; }
-  .sp-track-artist {
-    font-size: 0.7rem; color: #94a3b8; margin-top: 1px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .sp-card-thumb img {
+    width: 36px !important; height: 36px !important;
+    min-width: 36px !important; max-width: 36px !important;
+    min-height: 36px !important; max-height: 36px !important;
+    object-fit: cover !important; display: block !important;
   }
 
-  .sp-track-ico {
-    width: 26px; height: 26px; border-radius: 50%;
+  .sp-card-info { flex: 1; min-width: 0; }
+  .sp-card-title {
+    font-size: 0.83rem; font-weight: 600; color: #1e293b;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sp-card.active .sp-card-title { color: #6495ED; }
+  .sp-card-artist {
+    font-size: 0.68rem; color: #94a3b8; margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .sp-card-right {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .sp-card-dur {
+    font-size: 0.68rem; color: #94a3b8; font-family: monospace;
+  }
+  .sp-card-ico {
+    width: 24px; height: 24px; border-radius: 50%;
     background: #6495ED; color: #fff;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; opacity: 0;
-    box-shadow: 0 2px 8px rgba(100,149,237,.4);
+    box-shadow: 0 2px 6px rgba(100,149,237,.4);
     transition: opacity .15s;
   }
-  .sp-track:hover .sp-track-ico,
-  .sp-track.active .sp-track-ico { opacity: 1; }
+  .sp-card:hover .sp-card-ico,
+  .sp-card.active .sp-card-ico { opacity: 1; }
 
   /* LOADING / EMPTY */
   .sp-loading {

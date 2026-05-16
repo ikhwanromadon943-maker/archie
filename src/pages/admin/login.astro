@@ -76,3 +76,112 @@ import Base from '../../layouts/Base.astro';
   });
   document.getElementById('login-pw')!.addEventListener('keydown',(e)=>{ if((e as KeyboardEvent).key==='Enter') document.getElementById('login-btn')!.click(); });
 </script>
+
+<style>
+  .login-outer {
+    display:flex; align-items:center; justify-content:center;
+    min-height:75vh; padding:1rem;
+  }
+  .login-card {
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,0.85);
+    border-radius:2rem;
+    /* lebih lebar, tidak memanjang ke bawah */
+    padding:2.2rem 2.8rem;
+    width:100%; max-width:520px;
+    position:relative; overflow:hidden;
+    box-shadow:0 25px 60px rgba(100,149,237,0.12), 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .login-deco-1 {
+    position:absolute; top:-80px; right:-80px;
+    width:240px; height:240px;
+    background:rgba(100,149,237,0.15); border-radius:50%;
+    filter:blur(60px); pointer-events:none;
+  }
+  .login-deco-2 {
+    position:absolute; bottom:-80px; left:-80px;
+    width:240px; height:240px;
+    background:rgba(180,160,220,0.12); border-radius:50%;
+    filter:blur(60px); pointer-events:none;
+  }
+  .login-inner { position:relative; z-index:1; text-align:center; }
+
+  .login-icon-wrap { display:flex; justify-content:center; margin-bottom:1.2rem; }
+  .login-icon-circle {
+    padding:1.1rem;
+    background:linear-gradient(135deg,#eff6ff,#fff);
+    border-radius:50%; border:1px solid #dbeafe;
+    box-shadow:0 2px 12px rgba(100,149,237,0.12);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.5s ease;
+  }
+  .login-card:hover .login-icon-circle { transform:scale(1.08); }
+
+  .login-title {
+    font-family:'Playfair Display',serif;
+    font-size:1.8rem; font-weight:700;
+    color:#6495ED; margin-bottom:0.3rem; letter-spacing:-0.02em;
+  }
+  .login-eyebrow {
+    font-size:0.62rem; font-family:monospace;
+    color:#94a3b8; letter-spacing:0.2em; font-weight:600;
+    margin-bottom:1.5rem; display:block;
+  }
+
+  .login-error {
+    background:#fef2f2; border:1px solid #fecaca; color:#ef4444;
+    padding:0.55rem 0.8rem; border-radius:0.6rem;
+    font-size:0.75rem; font-family:monospace;
+    margin-bottom:1rem; display:none; text-align:left;
+  }
+  .login-error.show { display:block; }
+
+  .login-field { text-align:left; margin-bottom:1.25rem; }
+  .login-label {
+    font-size:0.6rem; font-family:monospace; font-weight:700;
+    color:#94a3b8; letter-spacing:0.2em;
+    display:block; margin-bottom:0.5rem; margin-left:0.75rem;
+    text-transform:uppercase;
+  }
+  .login-input-wrap { position:relative; }
+  .login-input-icon {
+    position:absolute; left:1rem; top:50%; transform:translateY(-50%);
+    color:#94a3b8; pointer-events:none; display:flex;
+  }
+  .login-input {
+    width:100%; background:rgba(255,255,255,0.6);
+    border:1px solid #e2e8f0; border-radius:0.75rem;
+    padding:0.9rem 1rem 0.9rem 3rem;
+    text-align:center; letter-spacing:0.4em;
+    font-weight:700; color:#334155; font-size:0.9rem;
+    outline:none; transition:all 0.3s ease;
+    box-shadow:0 1px 4px rgba(0,0,0,0.04);
+  }
+  .login-input:focus {
+    box-shadow:0 0 0 2px rgba(100,149,237,0.3);
+    border-color:rgba(100,149,237,0.5);
+    background:#fff;
+  }
+  .login-btn {
+    width:100%; padding:0.9rem;
+    background:#6495ED; color:#fff; border:none;
+    border-radius:0.75rem;
+    font-size:0.72rem; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.75rem;
+    box-shadow:0 4px 16px rgba(100,149,237,0.3);
+    transition:all 0.3s ease; margin-bottom:1.5rem;
+  }
+  .login-btn:hover { background:#5b89dc; transform:translateY(-2px); box-shadow:0 8px 24px rgba(100,149,237,0.4); }
+  .login-btn:active { transform:scale(0.98); }
+  .login-btn:disabled { opacity:0.7; cursor:not-allowed; transform:none; }
+
+  .login-back-wrap { display:flex; justify-content:center; }
+  .login-back {
+    font-size:0.78rem; color:#94a3b8;
+    border-bottom:1px solid transparent;
+    transition:all 0.2s ease; padding-bottom:1px;
+  }
+  .login-back:hover { color:#6495ED; border-color:#6495ED; }
+</style>

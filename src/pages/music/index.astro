@@ -10,7 +10,7 @@ import Base from '../../layouts/Base.astro';
     <!-- SEARCH -->
     <div class="music-search-wrap">
       <span class="music-search-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6495ED" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </span>
       <input type="text" id="searchInput" class="music-search-input" placeholder="Search song..." autocomplete="off"/>
       <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
@@ -18,17 +18,14 @@ import Base from '../../layouts/Base.astro';
 
     <!-- MINI PLAYER -->
     <div class="music-player" id="musicPlayer">
-      <!-- Thumbnail -->
       <div id="playerThumbWrap" class="player-thumb-wrap" style="display:none">
         <img id="playerThumb" class="player-thumb" src="" alt=""/>
       </div>
-      <!-- Info -->
       <div class="player-info">
-        <div id="playerTitle" class="player-title">No track selected</div>
+        <div id="playerTitle" class="player-title">Press play</div>
         <div id="playerArtist" class="player-artist">—</div>
         <div id="playerDuration" class="player-duration"></div>
       </div>
-      <!-- Controls -->
       <div class="player-controls">
         <button id="btnPrev" class="player-btn-sm">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
@@ -41,11 +38,16 @@ import Base from '../../layouts/Base.astro';
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
       </div>
-      <!-- Progress -->
       <div id="progressBar" class="player-progress">
         <div id="progressFill" class="player-progress-fill"></div>
       </div>
       <div id="timeDisplay" class="player-time">0:00 / 0:00</div>
+    </div>
+
+    <!-- ALL TRACKS LIST -->
+    <div class="tracks-section" id="tracksSection">
+      <div class="tracks-heading">All Tracks</div>
+      <div id="tracksList" class="tracks-list"></div>
     </div>
 
     <audio id="audioPlayer"></audio>
@@ -56,7 +58,6 @@ import Base from '../../layouts/Base.astro';
 <script>
   import { supabase } from '../../lib/supabase';
 
-  // DOM elements
   const audio = document.getElementById('audioPlayer') as HTMLAudioElement;
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
   const searchDropdown = document.getElementById('searchDropdown')!;
@@ -70,37 +71,38 @@ import Base from '../../layouts/Base.astro';
   const timeDisplay = document.getElementById('timeDisplay')!;
   const iconPlay = document.getElementById('iconPlay')!;
   const iconPause = document.getElementById('iconPause')!;
+  const tracksList = document.getElementById('tracksList')!;
 
   let tracks: any[] = [];
   let currentTrack: any = null;
   let isPlaying = false;
 
-  // Format time
   function fmt(sec: number): string {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
-  // Update play/pause icon
   function updatePlayIcon(playing: boolean) {
     isPlaying = playing;
     iconPlay.style.display = playing ? 'none' : '';
     iconPause.style.display = playing ? '' : 'none';
   }
 
-  // Load & play track
+  function highlightActiveTrack(trackId: string | null) {
+    document.querySelectorAll('.track-row').forEach(el => {
+      el.classList.toggle('active', (el as HTMLElement).dataset.id === trackId);
+    });
+  }
+
   function playTrack(track: any) {
     if (!track) return;
     currentTrack = track;
-    
+
     playerTitle.textContent = track.title || 'Unknown';
     playerArtist.textContent = track.artist || '—';
-    
-    // Duration dari metadata atau default
     playerDuration.textContent = '';
 
-    // Thumbnail
     if (track.thumbnail && (track.thumbnail.startsWith('http') || track.thumbnail.startsWith('/'))) {
       playerThumb.src = track.thumbnail;
       playerThumbWrap.style.display = '';
@@ -108,28 +110,24 @@ import Base from '../../layouts/Base.astro';
       playerThumbWrap.style.display = 'none';
     }
 
-    // Audio
+    highlightActiveTrack(track.id);
+
     audio.src = track.url;
     audio.play().then(() => updatePlayIcon(true)).catch(() => updatePlayIcon(false));
-    
+
     searchDropdown.style.display = 'none';
     searchInput.value = '';
   }
 
-  // Toggle play/pause
   function togglePlay() {
     if (!currentTrack && tracks.length > 0) {
       playTrack(tracks[0]);
       return;
     }
-    if (audio.paused) {
-      audio.play();
-    } else {
-      audio.pause();
-    }
+    if (audio.paused) audio.play();
+    else audio.pause();
   }
 
-  // Play next
   function playNext() {
     if (tracks.length === 0) return;
     const idx = tracks.findIndex(t => t.id === currentTrack?.id);
@@ -137,7 +135,6 @@ import Base from '../../layouts/Base.astro';
     playTrack(next);
   }
 
-  // Play prev
   function playPrev() {
     if (tracks.length === 0) return;
     const idx = tracks.findIndex(t => t.id === currentTrack?.id);
@@ -145,11 +142,65 @@ import Base from '../../layouts/Base.astro';
     playTrack(prev);
   }
 
-  // Audio events
+  function renderAllTracks() {
+    if (tracks.length === 0) {
+      tracksList.innerHTML = '<div class="tracks-empty">No tracks available</div>';
+      return;
+    }
+
+    tracksList.innerHTML = tracks.map((t, i) => `
+      <div class="track-row" data-id="${t.id}" data-index="${i}">
+        <div class="track-row-thumb">
+          ${t.thumbnail 
+            ? `<img src="${t.thumbnail}" alt="" onerror="this.parentElement.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#94a3b8\\' stroke-width=\\'2\\'><path d=\\'M9 18V5l12-2v13\\'/><circle cx=\\'6\\' cy=\\'18\\' r=\\'3\\'/><circle cx=\\'18\\' cy=\\'16\\' r=\\'3\\'/></svg>';"/>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
+          }
+        </div>
+        <div class="track-row-info">
+          <div class="track-row-title">${t.title}</div>
+          <div class="track-row-artist">${t.artist}</div>
+        </div>
+        <button class="track-row-play-btn" data-id="${t.id}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+    `).join('');
+
+    tracksList.querySelectorAll('.track-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) return;
+        const id = (row as HTMLElement).dataset.id;
+        const track = tracks.find(t => t.id == id);
+        if (track) {
+          if (currentTrack?.id === track.id) {
+            audio.paused ? audio.play() : audio.pause();
+          } else {
+            playTrack(track);
+          }
+        }
+      });
+    });
+
+    tracksList.querySelectorAll('.track-row-play-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (btn as HTMLElement).dataset.id;
+        const track = tracks.find(t => t.id == id);
+        if (track) {
+          if (currentTrack?.id === track.id) {
+            audio.paused ? audio.play() : audio.pause();
+          } else {
+            playTrack(track);
+          }
+        }
+      });
+    });
+  }
+
   audio.addEventListener('timeupdate', () => {
     if (!audio.duration || isNaN(audio.duration)) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    progressFill.style.width = pct + '%';
+    progressFill.style.width = (audio.currentTime / audio.duration) * 100 + '%';
     timeDisplay.textContent = fmt(audio.currentTime) + ' / ' + fmt(audio.duration);
   });
 
@@ -163,19 +214,16 @@ import Base from '../../layouts/Base.astro';
   audio.addEventListener('pause', () => updatePlayIcon(false));
   audio.addEventListener('ended', playNext);
 
-  // Progress bar click
   progressBar.addEventListener('click', (e) => {
     if (!audio.duration || isNaN(audio.duration)) return;
     const rect = progressBar.getBoundingClientRect();
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
   });
 
-  // Button events
   document.getElementById('btnPlay')!.addEventListener('click', togglePlay);
   document.getElementById('btnNext')!.addEventListener('click', playNext);
   document.getElementById('btnPrev')!.addEventListener('click', playPrev);
 
-  // Search
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase().trim();
     if (!q) {
@@ -205,37 +253,34 @@ import Base from '../../layouts/Base.astro';
     searchDropdown.style.display = 'block';
   });
 
-  // Close dropdown
   document.addEventListener('click', (e) => {
     if (!(e.target as HTMLElement).closest('.music-search-wrap')) {
       searchDropdown.style.display = 'none';
     }
   });
 
-  // Init
   (async () => {
     const { data, error } = await supabase.from('music').select('*').order('added_at', { ascending: false });
     if (data && data.length > 0) {
       tracks = data;
-      playerTitle.textContent = `${tracks.length} tracks ready`;
-      playerArtist.textContent = 'Search or press play';
+      playerTitle.textContent = `${tracks.length} tracks loaded`;
+      playerArtist.textContent = 'Choose a track below';
+      renderAllTracks();
     } else {
-      playerTitle.textContent = 'No tracks';
+      playerTitle.textContent = 'No tracks found';
       playerArtist.textContent = 'Add in admin panel';
+      tracksList.innerHTML = '<div class="tracks-empty">No tracks available</div>';
     }
   })();
 </script>
 
 <style>
-  /* === CONTAINER === */
   .music-page {
-    max-width: 420px;
+    max-width: 440px;
     margin: 0 auto;
     padding: 3rem 1rem 2rem;
     font-family: 'Inter', system-ui, sans-serif;
   }
-
-  /* === TITLE === */
   .music-title {
     text-align: center;
     font-size: clamp(2rem, 10vw, 3.5rem);
@@ -246,7 +291,7 @@ import Base from '../../layouts/Base.astro';
   }
   .music-dot { color: #6495ED; }
 
-  /* === SEARCH === */
+  /* SEARCH */
   .music-search-wrap {
     position: relative;
     margin-bottom: 1.5rem;
@@ -256,7 +301,6 @@ import Base from '../../layouts/Base.astro';
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: #94a3b8;
     z-index: 2;
     display: flex;
   }
@@ -310,7 +354,7 @@ import Base from '../../layouts/Base.astro';
     font-size: 0.8rem;
   }
 
-  /* === PLAYER === */
+  /* PLAYER */
   .music-player {
     display: flex;
     flex-wrap: wrap;
@@ -321,9 +365,8 @@ import Base from '../../layouts/Base.astro';
     border-radius: 18px;
     padding: 14px 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
   }
-  
-  /* THUMBNAIL — ini kuncinya */
   .player-thumb-wrap {
     width: 44px;
     height: 44px;
@@ -349,8 +392,6 @@ import Base from '../../layouts/Base.astro';
     object-fit: cover !important;
     display: block !important;
   }
-
-  /* INFO */
   .player-info {
     flex: 1;
     min-width: 0;
@@ -373,8 +414,6 @@ import Base from '../../layouts/Base.astro';
     font-family: monospace;
     margin-top: 2px;
   }
-
-  /* CONTROLS */
   .player-controls {
     display: flex;
     align-items: center;
@@ -408,8 +447,6 @@ import Base from '../../layouts/Base.astro';
     box-shadow: 0 4px 12px rgba(100,149,237,0.35);
   }
   .player-btn-play:hover { background: #5b89dc; transform: scale(1.05); }
-
-  /* PROGRESS */
   .player-progress {
     width: 100%;
     height: 4px;
@@ -431,5 +468,108 @@ import Base from '../../layouts/Base.astro';
     font-family: monospace;
     color: #94a3b8;
     text-align: right;
+  }
+
+  /* TRACKS LIST */
+  .tracks-section {
+    margin-top: 0.5rem;
+  }
+  .tracks-heading {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    padding-left: 4px;
+  }
+  .tracks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .track-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .track-row:hover {
+    background: rgba(100,149,237,0.05);
+  }
+  .track-row.active {
+    background: rgba(100,149,237,0.1);
+  }
+  .track-row.active .track-row-title {
+    color: #6495ED;
+  }
+  .track-row-thumb {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .track-row-thumb img {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    object-fit: cover !important;
+  }
+  .track-row-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .track-row-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .track-row-artist {
+    font-size: 0.7rem;
+    color: #94a3b8;
+  }
+  .track-row-play-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #6495ED;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .track-row:hover .track-row-play-btn,
+  .track-row.active .track-row-play-btn {
+    opacity: 1;
+  }
+  .track-row-play-btn:hover {
+    background: rgba(100,149,237,0.12);
+  }
+  .tracks-empty {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 2rem;
   }
 </style>

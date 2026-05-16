@@ -21,6 +21,9 @@ import Base from '../../layouts/Base.astro';
 
   <!-- Mini player -->
   <div class="mini-player" id="mini-player" style="display:none">
+    <div class="mp-thumb-wrap" id="mp-thumb-wrap" style="display:none">
+      <img class="mp-thumb" id="mp-thumb" src="" alt=""/>
+    </div>
     <div class="mp-info">
       <div class="mp-title" id="mp-title">—</div>
       <div class="mp-artist" id="mp-artist">—</div>
@@ -70,6 +73,8 @@ import Base from '../../layouts/Base.astro';
   const player   = document.getElementById('mini-player')!;
   const mpTitle  = document.getElementById('mp-title')!;
   const mpArtist = document.getElementById('mp-artist')!;
+  const mpThumb  = document.getElementById('mp-thumb') as HTMLImageElement;
+  const mpThumbWrap = document.getElementById('mp-thumb-wrap')!;
   const mpFill   = document.getElementById('mp-fill')!;
   const mpTime   = document.getElementById('mp-time')!;
   const playIcon  = document.getElementById('mp-play-icon')!;
@@ -94,6 +99,15 @@ import Base from '../../layouts/Base.astro';
     currentIdx = idx;
     mpTitle.textContent  = t.title;
     mpArtist.textContent = t.artist;
+    
+    // Thumbnail pake wrapper biar ga gede
+    if (t.thumbnail && (t.thumbnail.startsWith('http') || t.thumbnail.startsWith('/'))) {
+      mpThumb.src = t.thumbnail;
+      mpThumbWrap.style.display = 'flex';
+    } else {
+      mpThumbWrap.style.display = 'none';
+    }
+    
     player.style.display  = 'flex';
 
     if (t.url) {
@@ -261,6 +275,34 @@ import Base from '../../layouts/Base.astro';
     margin-left:auto;
     margin-right:auto;
   }
+  
+  /* THUMBNAIL WRAPPER - constraint ketat biar ga gede */
+  .mp-thumb-wrap {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+  }
+  .mp-thumb {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+  
   .mp-info  { flex:1; min-width:0; }
   .mp-title  { font-size:0.875rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .mp-artist { font-size:0.7rem; color:#94a3b8; }

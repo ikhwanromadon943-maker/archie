@@ -11,22 +11,19 @@ import Base from '../../layouts/Base.astro';
     <!-- SEARCH -->
     <div class="music-search-wrap">
       <span class="music-search-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
       </span>
       <input type="text" id="searchInput" class="music-search-input" placeholder="Search song..." autocomplete="off"/>
       <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
     </div>
 
-    <!-- TRACK LIST — each item = mini player -->
-    <div id="trackList" class="track-list">
-      <div class="track-card skeleton"></div>
-      <div class="track-card skeleton"></div>
-      <div class="track-card skeleton"></div>
-    </div>
-
-    <div id="emptyState" class="empty-state" style="display:none">No tracks found.</div>
+    <!-- TRACK LIST: rendered by JS, each item = mini player card -->
+    <div id="trackList" class="track-list"></div>
 
     <audio id="audioPlayer"></audio>
+
   </div>
 
 </Base>
@@ -34,209 +31,231 @@ import Base from '../../layouts/Base.astro';
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const audio = document.getElementById('audioPlayer') as HTMLAudioElement;
-  const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-  const searchDropdown = document.getElementById('searchDropdown')!;
-  const trackList = document.getElementById('trackList')!;
-  const emptyState = document.getElementById('emptyState')!;
+  const audio        = document.getElementById('audioPlayer') as HTMLAudioElement;
+  const searchInput  = document.getElementById('searchInput') as HTMLInputElement;
+  const searchDropdown = document.getElementById('searchDropdown') as HTMLElement;
+  const trackList    = document.getElementById('trackList') as HTMLElement;
 
-  let tracks: any[] = [];
-  let filtered: any[] = [];
-  let currentTrack: any = null;
-  let isPlaying = false;
+  let allTracks: any[]     = [];
+  let shownTracks: any[]   = [];
+  let currentTrack: any    = null;
+  let isPlaying            = false;
 
-  function fmt(sec: number): string {
+  /* ── helpers ── */
+  function fmt(sec: number) {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
-  function getCard(id: any) {
-    return trackList.querySelector(`.track-card[data-id="${id}"]`);
+  function cardOf(id: any): HTMLElement | null {
+    return trackList.querySelector(`.music-player[data-id="${id}"]`);
   }
 
-  function setCardPlaying(card: Element | null, playing: boolean) {
+  /* ── icon state ── */
+  function setIcons(card: HTMLElement | null, playing: boolean) {
     if (!card) return;
-    const iPlay  = card.querySelector('.icon-play')  as HTMLElement;
-    const iPause = card.querySelector('.icon-pause') as HTMLElement;
-    if (iPlay)  iPlay.style.display  = playing ? 'none' : '';
-    if (iPause) iPause.style.display = playing ? ''     : 'none';
+    (card.querySelector('.icon-play')  as HTMLElement).style.display = playing ? 'none' : '';
+    (card.querySelector('.icon-pause') as HTMLElement).style.display = playing ? ''     : 'none';
   }
 
-  function updateProgress(pct: number, timeStr: string) {
-    if (!currentTrack) return;
-    const card = getCard(currentTrack.id);
-    if (!card) return;
-    const fill = card.querySelector('.card-progress-fill') as HTMLElement;
-    const time = card.querySelector('.card-time') as HTMLElement;
-    if (fill) fill.style.width = pct + '%';
-    if (time) time.textContent = timeStr;
-  }
-
+  /* ── play a track ── */
   function playTrack(track: any) {
     if (!track) return;
 
-    // Reset previous
+    // deactivate previous card
     if (currentTrack) {
-      const prev = getCard(currentTrack.id);
+      const prev = cardOf(currentTrack.id);
       if (prev) {
         prev.classList.remove('is-playing');
-        setCardPlaying(prev, false);
-        const fill = prev.querySelector('.card-progress-fill') as HTMLElement;
-        const time = prev.querySelector('.card-time') as HTMLElement;
-        if (fill) fill.style.width = '0%';
-        if (time) time.textContent = '0:00 / 0:00';
+        setIcons(prev, false);
+        (prev.querySelector('.player-progress-fill') as HTMLElement).style.width = '0%';
+        (prev.querySelector('.player-time') as HTMLElement).textContent = '0:00 / 0:00';
       }
     }
 
     currentTrack = track;
-    const card = getCard(track.id);
+
+    // activate new card
+    const card = cardOf(track.id);
     if (card) card.classList.add('is-playing');
 
     audio.src = track.url;
     audio.play()
-      .then(() => { isPlaying = true;  setCardPlaying(getCard(track.id), true);  })
-      .catch(()=> { isPlaying = false; setCardPlaying(getCard(track.id), false); });
+      .then(() => { isPlaying = true;  setIcons(cardOf(track.id), true);  })
+      .catch(()  => { isPlaying = false; setIcons(cardOf(track.id), false); });
 
     searchDropdown.style.display = 'none';
     searchInput.value = '';
   }
 
+  /* ── toggle play/pause on current ── */
   function toggleCurrent() {
-    if (!currentTrack) { if (filtered.length) playTrack(filtered[0]); return; }
+    if (!currentTrack) { if (shownTracks.length) playTrack(shownTracks[0]); return; }
     audio.paused ? audio.play() : audio.pause();
   }
 
+  /* ── next / prev ── */
   function playNext() {
-    if (!filtered.length) return;
-    const idx = filtered.findIndex(t => t.id === currentTrack?.id);
-    playTrack(filtered[idx < filtered.length - 1 ? idx + 1 : 0]);
+    if (!allTracks.length) return;
+    const idx = allTracks.findIndex(t => t.id === currentTrack?.id);
+    playTrack(allTracks[idx < allTracks.length - 1 ? idx + 1 : 0]);
   }
-
   function playPrev() {
-    if (!filtered.length) return;
-    const idx = filtered.findIndex(t => t.id === currentTrack?.id);
-    playTrack(filtered[idx > 0 ? idx - 1 : filtered.length - 1]);
+    if (!allTracks.length) return;
+    const idx = allTracks.findIndex(t => t.id === currentTrack?.id);
+    playTrack(allTracks[idx > 0 ? idx - 1 : allTracks.length - 1]);
   }
 
+  /* ── audio events ── */
   audio.addEventListener('timeupdate', () => {
-    if (!audio.duration || isNaN(audio.duration)) return;
+    if (!currentTrack || !audio.duration || isNaN(audio.duration)) return;
+    const card = cardOf(currentTrack.id);
+    if (!card) return;
     const pct = (audio.currentTime / audio.duration) * 100;
-    updateProgress(pct, fmt(audio.currentTime) + ' / ' + fmt(audio.duration));
+    (card.querySelector('.player-progress-fill') as HTMLElement).style.width = pct + '%';
+    (card.querySelector('.player-time') as HTMLElement).textContent =
+      fmt(audio.currentTime) + ' / ' + fmt(audio.duration);
   });
 
   audio.addEventListener('loadedmetadata', () => {
     if (!currentTrack || !audio.duration || isNaN(audio.duration)) return;
-    const card = getCard(currentTrack.id);
-    const dur = card?.querySelector('.card-duration') as HTMLElement;
-    if (dur) dur.textContent = fmt(audio.duration);
+    const card = cardOf(currentTrack.id);
+    if (!card) return;
+    (card.querySelector('.player-duration') as HTMLElement).textContent = fmt(audio.duration);
   });
 
-  audio.addEventListener('play',  () => { isPlaying = true;  setCardPlaying(getCard(currentTrack?.id), true);  });
-  audio.addEventListener('pause', () => { isPlaying = false; setCardPlaying(getCard(currentTrack?.id), false); });
+  audio.addEventListener('play',  () => { isPlaying = true;  setIcons(cardOf(currentTrack?.id), true);  });
+  audio.addEventListener('pause', () => { isPlaying = false; setIcons(cardOf(currentTrack?.id), false); });
   audio.addEventListener('ended', playNext);
 
+  /* ── build one card (= one mini-player) ── */
+  function buildCard(track: any, delay: number): HTMLElement {
+    const hasCover = track.thumbnail &&
+      (track.thumbnail.startsWith('http') || track.thumbnail.startsWith('/'));
+
+    const div = document.createElement('div');
+    // re-use all the same CSS class names from the original mini player
+    div.className = 'music-player';
+    div.dataset.id = String(track.id);
+    div.style.animationDelay = delay + 'ms';
+
+    div.innerHTML = `
+      <!-- Thumbnail -->
+      <div class="player-thumb-wrap" style="${hasCover ? '' : 'display:none'}">
+        <img class="player-thumb" src="${hasCover ? track.thumbnail : ''}" alt="" loading="lazy"/>
+      </div>
+
+      <!-- Info -->
+      <div class="player-info">
+        <div class="player-title">${track.title || 'Unknown'}</div>
+        <div class="player-artist">${track.artist || '—'}</div>
+        <div class="player-duration"></div>
+      </div>
+
+      <!-- Controls -->
+      <div class="player-controls">
+        <button class="player-btn-sm btn-prev" aria-label="Previous">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="player-btn-play btn-play" aria-label="Play/Pause">
+          <svg class="icon-play"  width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <button class="player-btn-sm btn-next" aria-label="Next">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+
+      <!-- Progress -->
+      <div class="player-progress btn-progress">
+        <div class="player-progress-fill"></div>
+      </div>
+      <div class="player-time">0:00 / 0:00</div>
+    `;
+
+    /* button events */
+    div.querySelector('.btn-play')!.addEventListener('click', e => {
+      e.stopPropagation();
+      currentTrack?.id === track.id ? toggleCurrent() : playTrack(track);
+    });
+    div.querySelector('.btn-prev')!.addEventListener('click', e => {
+      e.stopPropagation();
+      if (currentTrack?.id === track.id) playPrev(); else playTrack(track);
+    });
+    div.querySelector('.btn-next')!.addEventListener('click', e => {
+      e.stopPropagation();
+      if (currentTrack?.id === track.id) playNext(); else playTrack(track);
+    });
+
+    /* progress bar seek */
+    const bar = div.querySelector('.btn-progress') as HTMLElement;
+    bar.addEventListener('click', e => {
+      e.stopPropagation();
+      if (currentTrack?.id !== track.id) return;
+      if (!audio.duration || isNaN(audio.duration)) return;
+      const rect = bar.getBoundingClientRect();
+      audio.currentTime = ((e as MouseEvent).clientX - rect.left) / rect.width * audio.duration;
+    });
+
+    return div;
+  }
+
+  /* ── render list ── */
   function renderList(list: any[]) {
     trackList.innerHTML = '';
-    if (list.length === 0) { emptyState.style.display = ''; return; }
-    emptyState.style.display = 'none';
+    shownTracks = list;
+
+    if (!list.length) {
+      trackList.innerHTML = '<p class="no-tracks">No tracks found.</p>';
+      return;
+    }
 
     list.forEach((track, i) => {
-      const isActive  = currentTrack?.id === track.id;
-      const nowPlay   = isActive && isPlaying;
-      const hasCover  = track.thumbnail &&
-        (track.thumbnail.startsWith('http') || track.thumbnail.startsWith('/'));
-
-      const card = document.createElement('div');
-      card.className = 'track-card' + (isActive ? ' is-playing' : '');
-      card.dataset.id = String(track.id);
-      card.style.animationDelay = `${i * 35}ms`;
-
-      card.innerHTML = `
-        <div class="card-thumb-wrap ${hasCover ? '' : 'card-thumb-placeholder'}">
-          ${hasCover
-            ? `<img src="${track.thumbnail}" alt="" class="card-thumb" loading="lazy"/>`
-            : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
-          }
-        </div>
-        <div class="card-info">
-          <div class="card-title">${track.title || 'Unknown'}</div>
-          <div class="card-artist">${track.artist || '—'}</div>
-          <div class="card-duration"></div>
-        </div>
-        <div class="card-controls">
-          <button class="card-btn-sm btn-prev" aria-label="Prev">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-          </button>
-          <button class="card-btn-play btn-play" aria-label="Play/Pause">
-            <svg class="icon-play"  width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="${nowPlay ? 'display:none' : ''}"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="${nowPlay ? '' : 'display:none'}"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          </button>
-          <button class="card-btn-sm btn-next" aria-label="Next">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-          </button>
-        </div>
-        <div class="card-progress-bar">
-          <div class="card-progress-fill"></div>
-        </div>
-        <div class="card-time">0:00 / 0:00</div>
-      `;
-
-      card.querySelector('.btn-play')!.addEventListener('click', e => {
-        e.stopPropagation();
-        currentTrack?.id === track.id ? toggleCurrent() : playTrack(track);
-      });
-      card.querySelector('.btn-prev')!.addEventListener('click', e => {
-        e.stopPropagation();
-        currentTrack?.id === track.id ? playPrev() : playTrack(track);
-      });
-      card.querySelector('.btn-next')!.addEventListener('click', e => {
-        e.stopPropagation();
-        currentTrack?.id === track.id ? playNext() : playTrack(track);
-      });
-
-      const bar = card.querySelector('.card-progress-bar')!;
-      bar.addEventListener('click', e => {
-        e.stopPropagation();
-        if (!currentTrack || currentTrack.id !== track.id) return;
-        if (!audio.duration || isNaN(audio.duration)) return;
-        const rect = (bar as HTMLElement).getBoundingClientRect();
-        audio.currentTime = (((e as MouseEvent).clientX - rect.left) / rect.width) * audio.duration;
-      });
-
+      const card = buildCard(track, i * 40);
+      if (currentTrack?.id === track.id) {
+        card.classList.add('is-playing');
+        setIcons(card, isPlaying);
+      }
       trackList.appendChild(card);
     });
   }
 
-  // Search
+  /* ── search ── */
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase().trim();
-    filtered = q
-      ? tracks.filter(t => t.title?.toLowerCase().includes(q) || t.artist?.toLowerCase().includes(q))
-      : [...tracks];
 
-    if (!q) { searchDropdown.style.display = 'none'; renderList(filtered); return; }
+    if (!q) {
+      searchDropdown.style.display = 'none';
+      renderList(allTracks);
+      return;
+    }
 
-    searchDropdown.innerHTML = filtered.length === 0
-      ? '<div class="dropdown-empty">No results</div>'
-      : filtered.map(t => `
-          <div class="dropdown-item" data-id="${t.id}">
-            <span>${t.title}</span>
-            <span class="dropdown-artist">${t.artist || ''}</span>
-          </div>`).join('');
+    const hits = allTracks.filter(t =>
+      t.title?.toLowerCase().includes(q) || t.artist?.toLowerCase().includes(q)
+    );
 
-    searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const track = tracks.find(t => t.id == (el as HTMLElement).dataset.id);
-        if (track) playTrack(track);
-        searchDropdown.style.display = 'none';
-        searchInput.value = '';
-        filtered = [...tracks];
-        renderList(filtered);
+    // dropdown
+    if (!hits.length) {
+      searchDropdown.innerHTML = '<div class="dropdown-empty">No results</div>';
+    } else {
+      searchDropdown.innerHTML = hits.map(t => `
+        <div class="dropdown-item" data-id="${t.id}">
+          <span>${t.title}</span>
+          <span style="color:#94a3b8;font-size:0.75rem">${t.artist || ''}</span>
+        </div>`).join('');
+      searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const track = allTracks.find(t => t.id == (el as HTMLElement).dataset.id);
+          if (track) playTrack(track);
+          searchInput.value = '';
+          searchDropdown.style.display = 'none';
+          renderList(allTracks);
+        });
       });
-    });
+    }
     searchDropdown.style.display = 'block';
-    renderList(filtered);
+    renderList(hits);
   });
 
   document.addEventListener('click', e => {
@@ -244,27 +263,39 @@ import Base from '../../layouts/Base.astro';
       searchDropdown.style.display = 'none';
   });
 
-  // Init
+  /* ── init ── */
   (async () => {
-    const { data } = await supabase.from('music').select('*').order('added_at', { ascending: false });
-    trackList.innerHTML = '';
+    // skeleton while loading
+    for (let i = 0; i < 3; i++) {
+      const sk = document.createElement('div');
+      sk.className = 'music-player skeleton';
+      trackList.appendChild(sk);
+    }
+
+    const { data } = await supabase
+      .from('music')
+      .select('*')
+      .order('added_at', { ascending: false });
+
     if (data && data.length > 0) {
-      tracks = data; filtered = [...tracks]; renderList(filtered);
+      allTracks = data;
+      renderList(allTracks);
     } else {
-      emptyState.style.display = '';
+      trackList.innerHTML = '<p class="no-tracks">No tracks. Add some in the admin panel.</p>';
     }
   })();
 </script>
 
 <style>
+  /* ── page ── */
   .music-page {
-    max-width: 480px;
+    max-width: 420px;
     margin: 0 auto;
-    padding: 3rem 1rem 3rem;
+    padding: 3rem 1rem 2rem;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  /* TITLE */
+  /* ── title ── */
   .music-title {
     text-align: center;
     font-size: clamp(2rem, 10vw, 3.5rem);
@@ -275,17 +306,30 @@ import Base from '../../layouts/Base.astro';
   }
   .music-dot { color: #6495ED; }
 
-  /* SEARCH */
-  .music-search-wrap { position: relative; margin-bottom: 1.25rem; }
+  /* ── search ── */
+  .music-search-wrap {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
   .music-search-icon {
-    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-    color: #94a3b8; z-index: 2; display: flex;
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    z-index: 2;
+    display: flex;
   }
   .music-search-input {
-    width: 100%; padding: 12px 16px 12px 40px;
-    border: 1.5px solid #e2e8f0; border-radius: 50px;
-    font-size: 0.875rem; color: #1e293b; background: #fff;
-    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
     box-sizing: border-box;
   }
   .music-search-input:focus {
@@ -293,29 +337,51 @@ import Base from '../../layouts/Base.astro';
     box-shadow: 0 0 0 3px rgba(100,149,237,0.1);
   }
   .music-search-dropdown {
-    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-height: 240px;
-    overflow-y: auto; z-index: 100; padding: 6px;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 100;
+    padding: 6px;
   }
   .dropdown-item {
-    padding: 10px 14px; border-radius: 10px; cursor: pointer;
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 0.85rem; color: #1e293b; transition: background 0.15s;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #1e293b;
+    transition: background 0.15s;
   }
   .dropdown-item:hover { background: rgba(100,149,237,0.08); }
-  .dropdown-artist { color: #94a3b8; font-size: 0.75rem; }
-  .dropdown-empty { padding: 12px; text-align: center; color: #94a3b8; font-size: 0.8rem; }
+  .dropdown-empty {
+    padding: 12px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.8rem;
+  }
 
-  /* LIST */
-  .track-list { display: flex; flex-direction: column; gap: 10px; }
+  /* ── track list ── */
+  .track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-  /* CARD — mini player anatomy */
+  /* ── CARD = exact mini player styles ── */
   @keyframes cardIn {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .track-card {
+
+  .music-player {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -325,107 +391,147 @@ import Base from '../../layouts/Base.astro';
     border-radius: 18px;
     padding: 14px 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
     animation: cardIn 0.3s ease both;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .track-card:hover {
+  .music-player:hover {
     box-shadow: 0 6px 24px rgba(0,0,0,0.09);
-    transform: translateY(-1px);
   }
-  .track-card.is-playing {
+  .music-player.is-playing {
     border-color: #6495ED;
     box-shadow: 0 4px 20px rgba(100,149,237,0.18);
   }
 
-  /* Skeleton */
-  .track-card.skeleton {
+  /* skeleton */
+  .music-player.skeleton {
     height: 82px;
     background: linear-gradient(90deg, #f1f5f9 25%, #e8edf4 50%, #f1f5f9 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
-    border: none; box-shadow: none;
+    border: none;
+    box-shadow: none;
   }
   @keyframes shimmer {
     0%   { background-position: 200% 0; }
     100% { background-position: -200% 0; }
   }
 
-  /* THUMBNAIL */
-  .card-thumb-wrap {
+  /* ── thumbnail ── */
+  .player-thumb-wrap {
     width: 44px; height: 44px;
     min-width: 44px; max-width: 44px;
     min-height: 44px; max-height: 44px;
-    border-radius: 10px; overflow: hidden; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: #f1f5f9;
   }
-  .card-thumb-placeholder {
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-    color: #94a3b8;
-  }
-  .card-thumb {
+  .player-thumb {
     width: 44px !important; height: 44px !important;
     min-width: 44px !important; max-width: 44px !important;
     min-height: 44px !important; max-height: 44px !important;
-    object-fit: cover !important; display: block !important;
+    object-fit: cover !important;
+    display: block !important;
   }
-  .track-card.is-playing .card-thumb-wrap {
+  .music-player.is-playing .player-thumb-wrap {
     box-shadow: 0 0 0 2px #6495ED;
   }
 
-  /* INFO */
-  .card-info { flex: 1; min-width: 0; }
-  .card-title {
-    font-size: 0.875rem; font-weight: 600; color: #1e293b;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* ── info ── */
+  .player-info {
+    flex: 1;
+    min-width: 0;
   }
-  .track-card.is-playing .card-title { color: #6495ED; }
-  .card-artist {
-    font-size: 0.75rem; color: #94a3b8;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .player-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .card-duration {
-    font-size: 0.65rem; color: #94a3b8;
-    font-family: monospace; margin-top: 2px;
+  .music-player.is-playing .player-title { color: #6495ED; }
+  .player-artist {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-duration {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-family: monospace;
+    margin-top: 2px;
   }
 
-  /* CONTROLS */
-  .card-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .card-btn-sm {
-    width: 32px; height: 32px; border-radius: 50%;
-    border: none; background: #f1f5f9; color: #6495ED;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  /* ── controls ── */
+  .player-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .player-btn-sm {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #f1f5f9;
+    color: #6495ED;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background 0.15s;
   }
-  .card-btn-sm:hover { background: #e2e8f0; }
-  .card-btn-play {
-    width: 40px; height: 40px; border-radius: 50%;
-    border: none; background: #6495ED; color: #fff;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  .player-btn-sm:hover { background: #e2e8f0; }
+  .player-btn-play {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #6495ED;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 0 4px 12px rgba(100,149,237,0.35);
     transition: background 0.15s, transform 0.15s;
   }
-  .card-btn-play:hover { background: #5b89dc; transform: scale(1.05); }
+  .player-btn-play:hover { background: #5b89dc; transform: scale(1.05); }
 
-  /* PROGRESS */
-  .card-progress-bar {
-    width: 100%; height: 4px; background: #f1f5f9;
-    border-radius: 10px; cursor: pointer; overflow: hidden;
+  /* ── progress ── */
+  .player-progress {
+    width: 100%;
+    height: 4px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
   }
-  .card-progress-fill {
-    height: 100%; background: #6495ED; border-radius: 10px;
-    width: 0%; transition: width 0.1s linear;
+  .player-progress-fill {
+    height: 100%;
+    background: #6495ED;
+    border-radius: 10px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+  .player-time {
+    width: 100%;
+    font-size: 0.65rem;
+    font-family: monospace;
+    color: #94a3b8;
+    text-align: right;
   }
 
-  /* TIME */
-  .card-time {
-    width: 100%; font-size: 0.65rem;
-    font-family: monospace; color: #94a3b8; text-align: right;
-  }
-
-  /* EMPTY */
-  .empty-state {
-    text-align: center; padding: 3rem 0;
-    color: #94a3b8; font-size: 0.875rem;
+  /* ── misc ── */
+  .no-tracks {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    padding: 2rem 0;
   }
 </style>

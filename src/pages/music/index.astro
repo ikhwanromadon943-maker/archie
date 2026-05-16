@@ -4,7 +4,6 @@ import Base from '../../layouts/Base.astro';
 <Base title="Music" description="Music player.">
 
   <div class="music-page">
-    <!-- TITLE -->
     <div class="music-title">ARCHIE<span class="music-dot">.</span>MUSIC</div>
 
     <!-- SEARCH -->
@@ -21,7 +20,7 @@ import Base from '../../layouts/Base.astro';
     <!-- MINI PLAYER -->
     <div class="music-player" id="musicPlayer">
       <div id="playerThumbWrap" class="player-thumb-wrap" style="display:none">
-        <img id="playerThumb" class="player-thumb" src="" alt=""/>
+        <img id="playerThumb" class="player-thumb" src="" alt="" style="width:44px;height:44px;object-fit:cover;display:block;"/>
       </div>
       <div class="player-info">
         <div id="playerTitle" class="player-title">Press play</div>
@@ -77,6 +76,7 @@ import Base from '../../layouts/Base.astro';
   let isPlaying = false;
 
   function fmt(sec: number): string {
+    if (!sec || isNaN(sec)) return '0:00';
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
@@ -88,25 +88,33 @@ import Base from '../../layouts/Base.astro';
     iconPause.style.display = playing ? '' : 'none';
   }
 
-  function highlightActiveTrack(trackId: string | null) {
+  function updateTrackItemIcons(activeId: string | null) {
     document.querySelectorAll('.track-item').forEach(el => {
-      el.classList.toggle('active', (el as HTMLElement).dataset.id === trackId);
-    });
-    // Update icon play/pause di track yang aktif
-    document.querySelectorAll('.track-item-play-icon').forEach(icon => {
-      const parent = icon.closest('.track-item') as HTMLElement;
-      if (parent && parent.dataset.id === trackId && isPlaying) {
-        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-      } else {
-        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+      const id = (el as HTMLElement).dataset.id;
+      el.classList.toggle('active', id === activeId);
+      const icon = el.querySelector('.track-item-play-icon');
+      if (icon) {
+        icon.innerHTML = (id === activeId && isPlaying)
+          ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+          : '<path d="M8 5v14l11-7z"/>';
       }
     });
   }
 
   function playTrack(track: any) {
     if (!track) return;
-    currentTrack = track;
+    
+    // Kalau track yang sama, toggle play/pause
+    if (currentTrack?.id === track.id) {
+      if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+      return;
+    }
 
+    currentTrack = track;
     playerTitle.textContent = track.title || 'Unknown';
     playerArtist.textContent = track.artist || '—';
     playerDuration.textContent = '';
@@ -115,13 +123,18 @@ import Base from '../../layouts/Base.astro';
       playerThumb.src = track.thumbnail;
       playerThumbWrap.style.display = '';
     } else {
+      playerThumb.src = '';
       playerThumbWrap.style.display = 'none';
     }
 
-    highlightActiveTrack(track.id);
-
     audio.src = track.url;
-    audio.play().then(() => updatePlayIcon(true)).catch(() => updatePlayIcon(false));
+    audio.play().then(() => {
+      updatePlayIcon(true);
+      updateTrackItemIcons(track.id);
+    }).catch(() => {
+      updatePlayIcon(false);
+      updateTrackItemIcons(null);
+    });
 
     searchDropdown.style.display = 'none';
     searchInput.value = '';
@@ -132,8 +145,11 @@ import Base from '../../layouts/Base.astro';
       playTrack(tracks[0]);
       return;
     }
-    if (audio.paused) audio.play();
-    else audio.pause();
+    if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
   }
 
   function playNext() {
@@ -159,10 +175,8 @@ import Base from '../../layouts/Base.astro';
     tracksList.innerHTML = tracks.map(t => `
       <div class="track-item" data-id="${t.id}">
         <div class="track-item-thumb">
-          ${t.thumbnail 
-            ? `<img src="${t.thumbnail}" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='';"/>`
-            : ''}
-          <svg class="track-item-thumb-placeholder" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="${t.thumbnail ? 'display:none' : ''}"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          ${t.thumbnail ? `<img src="${t.thumbnail}" alt="" style="width:36px;height:36px;object-fit:cover;" onerror="this.remove();"/>` : ''}
+          ${!t.thumbnail ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>` : ''}
         </div>
         <div class="track-item-info">
           <div class="track-item-title">${t.title}</div>
@@ -174,35 +188,25 @@ import Base from '../../layouts/Base.astro';
       </div>
     `).join('');
 
-    // Click handlers
-    tracksList.querySelectorAll('.track-item').forEach(row => {
-      row.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.closest('button')) return;
-        const id = (row as HTMLElement).dataset.id;
-        const track = tracks.find(t => t.id == id);
-        if (track) {
-          if (currentTrack?.id === track.id) {
-            audio.paused ? audio.play() : audio.pause();
-          } else {
-            playTrack(track);
-          }
-        }
-      });
-    });
-
+    // Event: klik tombol play
     tracksList.querySelectorAll('.track-item-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const id = (btn as HTMLElement).dataset.id;
         const track = tracks.find(t => t.id == id);
-        if (track) {
-          if (currentTrack?.id === track.id) {
-            audio.paused ? audio.play() : audio.pause();
-          } else {
-            playTrack(track);
-          }
-        }
+        if (track) playTrack(track);
+      });
+    });
+
+    // Event: klik row (bukan tombol)
+    tracksList.querySelectorAll('.track-item').forEach(row => {
+      row.addEventListener('click', (e) => {
+        // Jangan proses kalau klik dari button
+        if ((e.target as HTMLElement).closest('button')) return;
+        const id = (row as HTMLElement).dataset.id;
+        const track = tracks.find(t => t.id == id);
+        if (track) playTrack(track);
       });
     });
   }
@@ -221,12 +225,14 @@ import Base from '../../layouts/Base.astro';
 
   audio.addEventListener('play', () => {
     updatePlayIcon(true);
-    highlightActiveTrack(currentTrack?.id);
+    updateTrackItemIcons(currentTrack?.id);
   });
+
   audio.addEventListener('pause', () => {
     updatePlayIcon(false);
-    highlightActiveTrack(currentTrack?.id);
+    updateTrackItemIcons(currentTrack?.id);
   });
+
   audio.addEventListener('ended', playNext);
 
   progressBar.addEventListener('click', (e) => {
@@ -235,9 +241,18 @@ import Base from '../../layouts/Base.astro';
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
   });
 
-  document.getElementById('btnPlay')!.addEventListener('click', togglePlay);
-  document.getElementById('btnNext')!.addEventListener('click', playNext);
-  document.getElementById('btnPrev')!.addEventListener('click', playPrev);
+  document.getElementById('btnPlay')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePlay();
+  });
+  document.getElementById('btnNext')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playNext();
+  });
+  document.getElementById('btnPrev')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    playPrev();
+  });
 
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase().trim();
@@ -258,7 +273,8 @@ import Base from '../../layouts/Base.astro';
         </div>
       `).join('');
       searchDropdown.querySelectorAll('.dropdown-item').forEach(el => {
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
           const id = (el as HTMLElement).dataset.id;
           const track = tracks.find(t => t.id == id);
           if (track) playTrack(track);
@@ -303,7 +319,6 @@ import Base from '../../layouts/Base.astro';
   }
   .music-dot { color: #6495ED; }
 
-  /* SEARCH ROW */
   .music-search-row {
     display: flex;
     align-items: center;
@@ -334,7 +349,6 @@ import Base from '../../layouts/Base.astro';
     color: #1e293b;
     background: #fff;
     outline: none;
-    transition: border-color 0.2s;
   }
   .music-search-input:focus {
     border-color: #6495ED;
@@ -363,7 +377,6 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     font-size: 0.85rem;
     color: #1e293b;
-    transition: background 0.15s;
   }
   .dropdown-item:hover {
     background: rgba(100,149,237,0.08);
@@ -379,7 +392,6 @@ import Base from '../../layouts/Base.astro';
     font-size: 0.8rem;
   }
 
-  /* PLAYER */
   .music-player {
     display: flex;
     flex-wrap: wrap;
@@ -408,14 +420,7 @@ import Base from '../../layouts/Base.astro';
     background: #f1f5f9;
   }
   .player-thumb {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
-    min-height: 44px !important;
-    max-height: 44px !important;
-    object-fit: cover !important;
-    display: block !important;
+    /* style inline yang handle */
   }
   .player-info {
     flex: 1;
@@ -471,7 +476,7 @@ import Base from '../../layouts/Base.astro';
     justify-content: center;
     box-shadow: 0 4px 12px rgba(100,149,237,0.35);
   }
-  .player-btn-play:hover { background: #5b89dc; transform: scale(1.05); }
+  .player-btn-play:hover { background: #5b89dc; }
   .player-progress {
     width: 100%;
     height: 4px;
@@ -485,7 +490,6 @@ import Base from '../../layouts/Base.astro';
     background: #6495ED;
     border-radius: 10px;
     width: 0%;
-    transition: width 0.1s linear;
   }
   .player-time {
     width: 100%;
@@ -495,7 +499,6 @@ import Base from '../../layouts/Base.astro';
     text-align: right;
   }
 
-  /* TRACKS LIST */
   .tracks-list {
     display: flex;
     flex-direction: column;
@@ -509,7 +512,6 @@ import Base from '../../layouts/Base.astro';
     padding: 10px 12px;
     border-radius: 12px;
     cursor: pointer;
-    transition: background 0.15s;
   }
   .track-item:hover {
     background: rgba(100,149,237,0.05);
@@ -534,16 +536,9 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    position: relative;
   }
   .track-item-thumb img {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    max-width: 36px !important;
-    object-fit: cover !important;
-    position: absolute;
-    inset: 0;
+    /* style inline */
   }
   .track-item-info {
     flex: 1;
@@ -573,12 +568,6 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s, background 0.15s;
-  }
-  .track-item:hover .track-item-btn,
-  .track-item.active .track-item-btn {
-    opacity: 1;
   }
   .track-item-btn:hover {
     background: rgba(100,149,237,0.12);

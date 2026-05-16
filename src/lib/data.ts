@@ -22,6 +22,17 @@ export interface GalleryItem {
   likes: number;
 }
 
+export interface Snippet {
+  id: string;
+  title: string;
+  description: string;
+  language: string;
+  code: string;
+  date: string;
+  views: number;
+  likes: number;
+}
+
 export interface MusicItem {
   id: string;
   title: string;
@@ -51,6 +62,29 @@ export const defaultNotes: Note[] = [
   },
 ];
 
+export const defaultSnippets: Snippet[] = [
+  {
+    id: 'snip-1',
+    title: 'Fetch with Timeout',
+    description: 'Wrapper fetch dengan AbortController timeout',
+    language: 'js',
+    code: `async function fetchWithTimeout(url, ms = 5000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return res.json();
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}`,
+    date: new Date().toISOString(),
+    views: 0,
+    likes: 0,
+  },
+];
 
 export const defaultGallery: GalleryItem[] = [];
 export const defaultMusic: MusicItem[] = [];

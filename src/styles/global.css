@@ -175,12 +175,19 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
   font-style: italic;
   font-size: 0.72rem;        /* dari 0.62rem */
   font-weight: 600;          /* tambah ini */
-  color: rgba(255,255,255,0.95); /* dari 0.78 → 0.95, lebih putih/terang */
+  color: rgba(255,255,255,0.88);
   margin-bottom: 0.28rem;
 }
 .gallery-card-date::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; background:#6495ED; box-shadow:0 0 5px rgba(100,149,237,0.9) }
 .gallery-card-title { font-family:var(--font-serif); font-style:italic; font-size:0.95rem; font-weight:600; color:#fff; line-height:1.25; text-shadow:0 1px 6px rgba(0,0,0,0.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.gallery-card-caption { font-size:0.65rem; color:rgba(255,255,255,0.55); margin-top:0.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.gallery-card-caption {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.75);  /* dari 0.55 */
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .gallery-like-btn { flex-shrink:0; display:flex; align-items:center; gap:0.3rem; background:rgba(255,255,255,0.16); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.24); padding:0.28rem 0.65rem; border-radius:999px; color:rgba(255,255,255,0.92); font-size:0.65rem; font-family:var(--font-mono); cursor:pointer; transition:all var(--ease) }
 .gallery-like-btn:hover { background:rgba(255,255,255,0.28) }
 .gallery-like-btn.liked { background:rgba(239,68,68,0.28); border-color:rgba(239,68,68,0.55); color:#fca5a5 }

@@ -119,7 +119,13 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .note-meta-row { display:flex; align-items:center; justify-content:space-between; padding-bottom:0.85rem; border-bottom:1px dashed rgba(148,163,184,0.3) }
 .note-meta-left { display:flex; align-items:center; gap:0.42rem }
 .note-dot  { width:6px; height:6px; border-radius:50%; background:var(--blue); opacity:0.5; flex-shrink:0 }
-.note-date { font-family:var(--font-serif); font-style:italic; font-size:0.78rem; color:var(--text-mute) }
+.note-date {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
 .note-edit-icon { color:#cbd5e1; transition:color var(--ease) }
 .note-card:hover .note-edit-icon { color:var(--blue) }
 .note-title { font-family:var(--font-serif); font-size:1.1rem; font-weight:700; color:var(--text); line-height:1.3; transition:color var(--ease); letter-spacing:-0.01em }
@@ -161,7 +167,17 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .gallery-card-img-grad { position:absolute; inset:0; pointer-events:none; background:linear-gradient(to top,rgba(8,15,38,0.82) 0%,rgba(8,15,38,0.28) 42%,transparent 65%) }
 .gallery-card-img-info { position:absolute; bottom:0; left:0; right:0; padding:0.9rem 1.1rem 1rem; display:flex; align-items:flex-end; justify-content:space-between; gap:0.75rem }
 .gallery-card-img-text { flex:1; min-width:0 }
-.gallery-card-date { display:flex; align-items:center; gap:0.32rem; font-family:var(--font-serif); font-style:italic; font-size:0.62rem; color:rgba(255,255,255,0.78); margin-bottom:0.28rem }
+.gallery-card-date {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.72rem;        /* dari 0.62rem */
+  font-weight: 600;          /* tambah ini */
+  color: rgba(255,255,255,0.95); /* dari 0.78 → 0.95, lebih putih/terang */
+  margin-bottom: 0.28rem;
+}
 .gallery-card-date::before { content:''; width:5px; height:5px; border-radius:50%; flex-shrink:0; background:#6495ED; box-shadow:0 0 5px rgba(100,149,237,0.9) }
 .gallery-card-title { font-family:var(--font-serif); font-style:italic; font-size:0.95rem; font-weight:600; color:#fff; line-height:1.25; text-shadow:0 1px 6px rgba(0,0,0,0.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .gallery-card-caption { font-size:0.65rem; color:rgba(255,255,255,0.55); margin-top:0.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }

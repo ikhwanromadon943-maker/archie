@@ -126,7 +126,7 @@ main { flex:1; width:100%; max-width:var(--max-w); margin:0 auto; padding:6.5rem
 .note-card:hover .note-title { color:var(--blue) }
 .note-img {
   width: 100%;
-  max-height: 340px;   /* naik dari 260px */
+  max-height: 380px;   /* naik dari 260px */
   object-fit: cover;
   border-radius: 14px;
   margin: 0.2rem 0;

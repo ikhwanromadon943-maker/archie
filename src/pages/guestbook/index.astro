@@ -22,15 +22,19 @@ import Base from '../../layouts/Base.astro';
     <p>Be the first to sign the guestbook.</p>
   </div>
 
-  <!-- TikTok-style compact composer, pinned above the tab bar -->
-  <div class="gb-composer">
+  <div class="gb-composer-error" id="gb-error" slot="above-tabbar"></div>
+
+  <!-- Rendered inside the layout's tab-bar-outer (see slot="above-tabbar"),
+       so it shares the exact same fixed-position anchor as the tab bar
+       itself — no separate bottom: Npx guess that can drift on different
+       browsers/viewports (in-app browsers like Instagram's included). -->
+  <div class="gb-composer" slot="above-tabbar">
     <input type="text" id="gb-name" class="gb-composer-name" placeholder="Name" maxlength="60" autocomplete="off"/>
     <input type="text" id="gb-message" class="gb-composer-msg" placeholder="Add a comment..." maxlength="500" autocomplete="off"/>
     <button class="gb-composer-send" id="gb-submit" aria-label="Post">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
-  <div class="gb-composer-error" id="gb-error"></div>
 
 </Base>
 
@@ -383,11 +387,12 @@ import Base from '../../layouts/Base.astro';
 
   /* COMPOSER — pinned above mini-player/tab-bar, TikTok-style single compact row */
   .gb-composer {
-    position: fixed;
-    left: 0; right: 0;
-    bottom: var(--tab-h); /* use the same variable the tab bar itself is built from — flush, no guessing */
-    max-width: 420px;
-    margin: 0 auto;
+    /* Lives inside .tab-bar-outer now (slot="above-tabbar"), stacked in the
+       same flex column as the nav itself — so it shares one single fixed
+       anchor instead of two independently-positioned fixed elements that
+       can drift apart on different browser chrome (e.g. in-app browsers). */
+    width: 100%;
+    max-width: 480px; /* matches .tab-bar's max-width so edges line up */
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -395,10 +400,10 @@ import Base from '../../layouts/Base.astro';
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(100,149,237,0.25);
-    border-radius: 24px 24px 0 0;
+    border-radius: 24px;
     padding: 0.5rem 0.5rem 0.5rem 0.9rem;
     box-shadow: 0 -4px 24px rgba(0,0,0,0.06), 0 8px 28px rgba(100,149,237,0.12);
-    z-index: 40;
+    pointer-events: auto; /* parent .tab-bar-outer sets pointer-events:none */
   }
   .gb-composer-name {
     width: 64px;
@@ -439,17 +444,14 @@ import Base from '../../layouts/Base.astro';
   .gb-composer-send:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
   .gb-composer-error {
-    position: fixed;
-    left: 0; right: 0;
-    bottom: calc(var(--tab-h) + 3.7rem);
-    max-width: 420px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 480px;
     text-align: center;
     font-size: 0.72rem;
     color: var(--red);
-    z-index: 40;
-    pointer-events: none;
+    min-height: 0;
   }
+  .gb-composer-error:empty { display: none; }
 
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(6px); }

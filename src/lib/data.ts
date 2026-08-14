@@ -43,10 +43,13 @@ export interface MusicItem {
   addedAt: string;
 }
 
-export interface VaultItem {
+export interface GuestbookEntry {
   id: string;
-  title: string;
-  content: string;
+  name: string;
+  message: string;
+  parentId?: string;
+  isAdmin: boolean;
+  likes: number;
   createdAt: string;
 }
 
@@ -88,4 +91,4 @@ export const defaultSnippets: Snippet[] = [
 
 export const defaultGallery: GalleryItem[] = [];
 export const defaultMusic: MusicItem[] = [];
-export const defaultVault: VaultItem[] = [];
+export const defaultGuestbook: GuestbookEntry[] = [];

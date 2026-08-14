@@ -67,6 +67,10 @@ import Base from '../../layouts/Base.astro';
     const correct = await getPass();
     if (pw===correct) {
       sessionStorage.setItem('admin_authed','1');
+      // Kept only in sessionStorage (cleared when the tab closes) so admin-only
+      // actions like guestbook moderation can call the delete RPC with proof of
+      // identity, without ever granting anon direct delete access via RLS.
+      sessionStorage.setItem('admin_pass', pw);
       window.location.href='/admin';
     } else {
       err.classList.add('show');

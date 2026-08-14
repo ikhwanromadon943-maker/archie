@@ -106,6 +106,7 @@ import Base from '../../layouts/Base.astro';
 
   document.getElementById('logout-btn')!.addEventListener('click',()=>{
     sessionStorage.removeItem('admin_authed');
+    sessionStorage.removeItem('admin_pass');
     window.location.href = '/admin/login';
   });
 
@@ -224,17 +225,28 @@ import Base from '../../layouts/Base.astro';
     renderMusicAdmin();
   });
 
-  // ── GUESTBOOK (moderation: view/delete any message, post/reply as Archie) ──
+  // ── GUESTBOOK (moderation: view/delete any message, post as Archie) ──
+  // Reads go through the guestbook_public view (owner_token is never exposed).
+  // Deletes go through the delete_guestbook_entry RPC with the admin passphrase —
+  // the DB checks it against settings.admin_pass server-side, so this can't be
+  // spoofed by calling the table directly (there's no anon delete policy on it).
   async function renderGuestbookAdmin() {
     const list = document.getElementById('gb-admin-list')!;
     list.innerHTML = '';
-    const { data } = await supabase.from('guestbook').select('*').order('created_at',{ascending:false});
+    const { data } = await supabase.from('guestbook_public').select('*').order('created_at',{ascending:false});
     data?.forEach((g: any) => {
       const label = g.parent_id ? `↳ reply from ${g.name}` : `${g.name}${g.is_admin ? ' (Archie)' : ''}`;
       list.appendChild(makeCard(
         label,
         `${fdate(g.created_at)} · ${g.message.slice(0,70)}`,
-        async () => { await supabase.from('guestbook').delete().eq('id',g.id); }
+        async () => {
+          const adminPass = sessionStorage.getItem('admin_pass') || '';
+          const { data: ok, error } = await supabase.rpc('delete_guestbook_entry', {
+            p_id: g.id, p_owner_token: null, p_admin_pass: adminPass
+          });
+          if (error || !ok) alert('Failed to delete: ' + (error?.message || 'not authorized'));
+          renderGuestbookAdmin(); // re-sync list with DB regardless of outcome
+        }
       ));
     });
   }
@@ -242,7 +254,9 @@ import Base from '../../layouts/Base.astro';
   document.getElementById('add-gb-btn')!.addEventListener('click', async () => {
     const message = val('gb-admin-content');
     if (!message) return msg('gb-msg','Message required.',false);
-    const { error } = await supabase.from('guestbook').insert({ name:'Archie', message, is_admin:true });
+    const { error } = await supabase.rpc('post_guestbook_entry', {
+      p_name: 'Archie', p_message: message, p_parent_id: null, p_is_admin: true
+    });
     if (error) return msg('gb-msg',error.message,false);
     clear('gb-admin-content');
     msg('gb-msg','Posted!');
@@ -259,7 +273,7 @@ import Base from '../../layouts/Base.astro';
     const { error } = await supabase.from('settings').update({ value: np, updated_at: new Date().toISOString() }).eq('key','admin_pass');
     if (error) { pmsg.style.color='var(--red)'; pmsg.textContent=error.message; return; }
     pmsg.style.color='var(--green)'; pmsg.textContent='Passphrase updated! Re-logging in...';
-    setTimeout(()=>{ sessionStorage.removeItem('admin_authed'); window.location.href='/admin/login'; }, 1500);
+    setTimeout(()=>{ sessionStorage.removeItem('admin_authed'); sessionStorage.removeItem('admin_pass'); window.location.href='/admin/login'; }, 1500);
   });
 
   function renderTab(tab: string) {

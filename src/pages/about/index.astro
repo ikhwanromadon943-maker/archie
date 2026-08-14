@@ -54,7 +54,7 @@ import Base from '../../layouts/Base.astro';
   // event, and polls lightly as a fallback within the same tab.
   document.addEventListener('astro:page-load', () => {
     const NOW_PLAYING_KEY = 'archie-now-playing';
-    const STALE_MS = 15000; // if not refreshed in 15s, assume playback stopped
+    const STALE_MS = 10000; // heartbeat writes every ~4s while playing; treat as stopped past this
 
     const wrap  = document.getElementById('nowPlaying') as HTMLElement;
     const track = document.getElementById('npTrack') as HTMLElement;
@@ -76,7 +76,7 @@ import Base from '../../layouts/Base.astro';
 
     const w = window as any;
     if (w.__archieNowPlayingTimer) clearInterval(w.__archieNowPlayingTimer);
-    w.__archieNowPlayingTimer = setInterval(refresh, 4000);
+    w.__archieNowPlayingTimer = setInterval(refresh, 2000);
   });
 </script>
 

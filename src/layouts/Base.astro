@@ -331,10 +331,19 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
         broadcast();
       }
 
+      let lastNowPlayingWrite = 0;
       audio.addEventListener('play',  () => { updateMini(); saveNowPlaying(); broadcast(); });
       audio.addEventListener('pause', () => { updateMini(); saveState(); saveNowPlaying(); broadcast(); });
       audio.addEventListener('timeupdate', () => {
         if (audio.duration) mFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+        // Refresh the "now playing" heartbeat periodically (not every tick) so
+        // the About page's staleness check never expires while a track is
+        // genuinely still playing.
+        const now = Date.now();
+        if (!audio.paused && now - lastNowPlayingWrite > 4000) {
+          lastNowPlayingWrite = now;
+          saveNowPlaying();
+        }
         broadcast();
       });
       audio.addEventListener('loadedmetadata', broadcast);

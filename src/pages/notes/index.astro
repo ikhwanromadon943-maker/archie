@@ -26,6 +26,8 @@ import Base from '../../layouts/Base.astro';
 <script>
   import { supabase } from '../../lib/supabase';
 
+  document.addEventListener('astro:page-load', () => {
+
   const LS_KEY = 'liked_notes_v2';
   const getLiked = (): Set<string> => {
     try { return new Set(JSON.parse(localStorage.getItem(LS_KEY)||'[]')); }
@@ -112,4 +114,5 @@ import Base from '../../layouts/Base.astro';
   }
 
   render();
+  });
 </script>

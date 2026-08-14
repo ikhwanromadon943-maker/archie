@@ -85,6 +85,17 @@ const isActive = (href: string) => href === '/' ? p === '/' : p.startsWith(href)
   </div>
 
   <script>
+    // Reset --composer-h on every navigation first, so pages without a
+    // guestbook-style composer never inherit a stale offset that would
+    // leave the mini-player floating too high.
+    document.addEventListener('astro:page-load', () => {
+      if (!document.querySelector('.gb-composer')) {
+        document.documentElement.style.removeProperty('--composer-h');
+      }
+    });
+  </script>
+
+  <script>
     // Flowers persist across soft navigations (transition:persist), so this only
     // needs to run once — guard against Astro re-running it on the next page.
     document.addEventListener('astro:page-load', () => {

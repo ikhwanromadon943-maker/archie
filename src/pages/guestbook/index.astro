@@ -10,7 +10,9 @@ import Base from '../../layouts/Base.astro';
 
   <div class="loading-state" id="loading"><span class="loader"></span></div>
 
-  <div class="gb-feed" id="gb-feed"></div>
+  <div class="gb-feed-wrap">
+    <div class="gb-feed" id="gb-feed"></div>
+  </div>
 
   <div class="empty-state" id="empty-state" style="display:none">
     <div class="empty-icon">
@@ -243,11 +245,18 @@ import Base from '../../layouts/Base.astro';
 
 <!-- is:global WAJIB karena class di-inject via JS, Astro scoped CSS tidak akan apply -->
 <style is:global>
+  .gb-feed-wrap {
+    /* Independent scroll area for messages — no matter how many pile up,
+       the composer below stays fixed and never gets pushed down. */
+    max-height: calc(100dvh - 15rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   .gb-feed {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding-bottom: 7.5rem; /* keep last message clear of the composer + tab bar */
+    padding-bottom: 1rem;
   }
   .gb-thread {
     display: flex;
@@ -382,11 +391,13 @@ import Base from '../../layouts/Base.astro';
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(100,149,237,0.25);
     border-radius: 50px;
     padding: 0.4rem 0.5rem 0.4rem 0.9rem;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.06), 0 8px 28px rgba(100,149,237,0.12);
     z-index: 40;
   }
   .gb-composer-name {

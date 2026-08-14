@@ -16,7 +16,7 @@ import Base from '../../layouts/Base.astro';
       <button class="admin-tab active" data-tab="notes">Journal</button>
       <button class="admin-tab" data-tab="gallery">Gallery</button>
       <button class="admin-tab" data-tab="music">Music</button>
-      <button class="admin-tab" data-tab="vault">Vault</button>
+      <button class="admin-tab" data-tab="guestbook">Guestbook</button>
       <button class="admin-tab" data-tab="settings">Settings</button>
     </div>
 
@@ -60,6 +60,10 @@ import Base from '../../layouts/Base.astro';
           <div class="form-group"><label class="form-label">Duration</label><input type="text" id="music-duration" class="form-input" placeholder="3:45"/></div>
           <div class="form-group"><label class="form-label">URL (Spotify/YouTube)</label><input type="text" id="music-url" class="form-input" placeholder="https://..."/></div>
           <div class="form-group"><label class="form-label">Thumbnail URL</label><input type="text" id="music-thumb" class="form-input" placeholder="https://..."/></div>
+          <div class="form-group">
+            <label class="form-label">Lyrics (optional)</label>
+            <textarea id="music-lyrics" class="form-textarea" rows="6" placeholder="Plain text, or LRC-synced format:&#10;[00:12.50] First line&#10;[00:16.20] Second line"></textarea>
+          </div>
           <button class="btn btn-primary" id="add-music-btn">Add Track</button>
           <span class="save-msg" id="music-msg"></span>
         </div>
@@ -67,18 +71,17 @@ import Base from '../../layouts/Base.astro';
       <div id="music-admin-list" class="admin-grid"></div>
     </div>
 
-    <!-- VAULT -->
-    <div id="tab-vault" class="tab-panel" style="display:none">
+    <!-- GUESTBOOK -->
+    <div id="tab-guestbook" class="tab-panel" style="display:none">
       <div class="admin-card" style="margin-bottom:1rem">
-        <div class="admin-card-header"><span class="admin-card-title">Add Vault Entry</span></div>
+        <div class="admin-card-header"><span class="admin-card-title">Post as Archie</span></div>
         <div class="admin-card-body">
-          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="vault-title" class="form-input"/></div>
-          <div class="form-group"><label class="form-label">Content *</label><textarea id="vault-content-inp" class="form-textarea" rows="5"></textarea></div>
-          <button class="btn btn-primary" id="add-vault-btn">Save to Vault</button>
-          <span class="save-msg" id="vault-msg"></span>
+          <div class="form-group"><label class="form-label">Message *</label><textarea id="gb-admin-content" class="form-textarea" rows="3" placeholder="Reply to everyone, or leave a pinned note..."></textarea></div>
+          <button class="btn btn-primary" id="add-gb-btn">Post</button>
+          <span class="save-msg" id="gb-msg"></span>
         </div>
       </div>
-      <div id="vault-admin-list" class="admin-grid"></div>
+      <div id="gb-admin-list" class="admin-grid"></div>
     </div>
 
     <!-- SETTINGS -->
@@ -212,36 +215,38 @@ import Base from '../../layouts/Base.astro';
   document.getElementById('add-music-btn')!.addEventListener('click', async () => {
     const title = val('music-title'); const artist = val('music-artist');
     const duration = val('music-duration'); const url = val('music-url'); const thumbnail = val('music-thumb');
+    const lyrics = val('music-lyrics');
     if (!title || !artist) return msg('music-msg','Title & artist required.',false);
-    const { error } = await supabase.from('music').insert({ title, artist, duration:duration||null, url:url||null, thumbnail:thumbnail||null });
+    const { error } = await supabase.from('music').insert({ title, artist, duration:duration||null, url:url||null, thumbnail:thumbnail||null, lyrics:lyrics||null });
     if (error) return msg('music-msg',error.message,false);
-    clear('music-title','music-artist','music-duration','music-url','music-thumb');
+    clear('music-title','music-artist','music-duration','music-url','music-thumb','music-lyrics');
     msg('music-msg','Track added!');
     renderMusicAdmin();
   });
 
-  // ── VAULT ──
-  async function renderVaultAdmin() {
-    const list = document.getElementById('vault-admin-list')!;
+  // ── GUESTBOOK (moderation: view/delete any message, post/reply as Archie) ──
+  async function renderGuestbookAdmin() {
+    const list = document.getElementById('gb-admin-list')!;
     list.innerHTML = '';
-    const { data } = await supabase.from('vault').select('*').order('created_at',{ascending:false});
-    data?.forEach((v: any) => {
+    const { data } = await supabase.from('guestbook').select('*').order('created_at',{ascending:false});
+    data?.forEach((g: any) => {
+      const label = g.parent_id ? `↳ reply from ${g.name}` : `${g.name}${g.is_admin ? ' (Archie)' : ''}`;
       list.appendChild(makeCard(
-        v.title,
-        `${fdate(v.created_at)} · ${v.content.slice(0,60)}`,
-        async () => { await supabase.from('vault').delete().eq('id',v.id); }
+        label,
+        `${fdate(g.created_at)} · ${g.message.slice(0,70)}`,
+        async () => { await supabase.from('guestbook').delete().eq('id',g.id); }
       ));
     });
   }
 
-  document.getElementById('add-vault-btn')!.addEventListener('click', async () => {
-    const title = val('vault-title'); const content = val('vault-content-inp');
-    if (!title || !content) return msg('vault-msg','Title & content required.',false);
-    const { error } = await supabase.from('vault').insert({ title, content });
-    if (error) return msg('vault-msg',error.message,false);
-    clear('vault-title','vault-content-inp');
-    msg('vault-msg','Saved to vault!');
-    renderVaultAdmin();
+  document.getElementById('add-gb-btn')!.addEventListener('click', async () => {
+    const message = val('gb-admin-content');
+    if (!message) return msg('gb-msg','Message required.',false);
+    const { error } = await supabase.from('guestbook').insert({ name:'Archie', message, is_admin:true });
+    if (error) return msg('gb-msg',error.message,false);
+    clear('gb-admin-content');
+    msg('gb-msg','Posted!');
+    renderGuestbookAdmin();
   });
 
   // ── SETTINGS ──
@@ -260,7 +265,7 @@ import Base from '../../layouts/Base.astro';
   function renderTab(tab: string) {
     const map: Record<string,(()=>Promise<void>)> = {
       notes: renderNotes, gallery: renderGalleryAdmin,
-      music: renderMusicAdmin, vault: renderVaultAdmin
+      music: renderMusicAdmin, guestbook: renderGuestbookAdmin
     };
     map[tab]?.();
   }

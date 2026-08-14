@@ -103,7 +103,7 @@ body::before {
 .mini-progress-fill { height:100%; width:0%; background:var(--blue); transition:width 0.1s linear }
 
 /* Tab Bar */
-.tab-bar-outer { position:fixed; bottom:16px; left:0; right:0; z-index:200; display:flex; justify-content:center; padding:0 1rem; pointer-events:none }
+.tab-bar-outer { position:fixed; bottom:16px; left:0; right:0; z-index:200; display:flex; flex-direction:column; align-items:center; gap:8px; padding:0 1rem; pointer-events:none }
 .tab-bar { display:flex; align-items:center; background:rgba(255,255,255,0.96); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(229,231,235,0.9); border-radius:var(--r-xl); padding:6px; gap:2px; box-shadow:0 8px 32px rgba(0,0,0,0.1),0 2px 8px rgba(0,0,0,0.06); pointer-events:auto; width:100%; max-width:480px }
 .tab-item { display:flex; align-items:center; justify-content:center; flex:1; height:44px; border-radius:var(--r-md); color:#9ca3af; transition:color var(--ease),background var(--ease) }
 .tab-item:hover  { color:var(--blue); background:rgba(100,149,237,0.06) }

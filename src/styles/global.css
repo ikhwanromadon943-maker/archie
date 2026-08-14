@@ -41,8 +41,6 @@ button { cursor:pointer; font-family:inherit; border:none; background:none }
 /* Page Transition */
 main { animation:pageIn 0.36s cubic-bezier(0.22,1,0.36,1) both }
 @keyframes pageIn { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
-body.page-out main { animation:pageOut 0.2s ease forwards }
-@keyframes pageOut { to { opacity:0; transform:translateY(-8px) } }
 
 /* Grid Background — satu lapis, longgar, gelap tipis */
 body::before {
@@ -76,6 +74,33 @@ body::before {
 .nav-logo { font-family:var(--font-serif); font-size:1.75rem; font-weight:700; color:var(--blue); letter-spacing:-0.02em; line-height:1; transition:opacity var(--ease) }
 .nav-logo:hover { opacity:0.75 }
 .nav-logo .logo-dot { color:#94a3b8 }
+
+/* Global mini music player — floats above the tab bar, visible on every page
+   whenever a track is loaded, so playback started on /music can be seen and
+   controlled (paused/stopped) no matter where you navigate to. */
+.mini-player {
+  position:fixed; left:1rem; right:1rem; bottom:calc(var(--tab-h) + 8px); z-index:190;
+  display:flex; align-items:center; gap:10px;
+  max-width:480px; margin:0 auto;
+  background:rgba(255,255,255,0.92); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  border:1px solid rgba(229,231,235,0.9); border-radius:var(--r-xl);
+  padding:8px 10px; box-shadow:0 8px 28px rgba(0,0,0,0.1),0 2px 8px rgba(0,0,0,0.06);
+  animation:miniIn 0.28s cubic-bezier(0.22,1,0.36,1) both; overflow:hidden;
+}
+@keyframes miniIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+.mini-thumb-wrap { width:34px; height:34px; min-width:34px; border-radius:9px; background:var(--blue-bg); color:var(--blue); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0 }
+.mini-thumb { width:34px !important; height:34px !important; object-fit:cover !important; display:block !important }
+.mini-player.is-playing .mini-thumb-wrap { box-shadow:0 0 0 2px var(--blue) }
+.mini-info { flex:1; min-width:0; line-height:1.25 }
+.mini-title { font-size:0.78rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mini-player.is-playing .mini-title { color:var(--blue) }
+.mini-artist { font-size:0.68rem; color:var(--text-mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mini-toggle { width:32px; height:32px; min-width:32px; border-radius:50%; background:var(--blue); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 3px 10px rgba(100,149,237,0.35); transition:background var(--ease),transform var(--ease) }
+.mini-toggle:hover { background:var(--blue-hover); transform:scale(1.06) }
+.mini-close { width:26px; height:26px; min-width:26px; border-radius:50%; background:#f1f5f9; color:var(--text-mute); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background var(--ease),color var(--ease) }
+.mini-close:hover { background:#e2e8f0; color:var(--text) }
+.mini-progress { position:absolute; left:0; right:0; bottom:0; height:2.5px; background:transparent }
+.mini-progress-fill { height:100%; width:0%; background:var(--blue); transition:width 0.1s linear }
 
 /* Tab Bar */
 .tab-bar-outer { position:fixed; bottom:16px; left:0; right:0; z-index:200; display:flex; justify-content:center; padding:0 1rem; pointer-events:none }

@@ -149,15 +149,18 @@ import Base from '../../layouts/Base.astro';
 
     div.querySelector('.btn-play')!.addEventListener('click', e => {
       e.stopPropagation();
-      currentTrack?.id === track.id ? toggleCurrent() : playTrack(track);
+      const current = w.ArchieMusic?.getCurrent();
+      current?.id === track.id ? toggleCurrent() : playTrack(track);
     });
     div.querySelector('.btn-prev')!.addEventListener('click', e => {
       e.stopPropagation();
-      currentTrack?.id === track.id ? playPrev() : playTrack(track);
+      const current = w.ArchieMusic?.getCurrent();
+      current?.id === track.id ? playPrev() : playTrack(track);
     });
     div.querySelector('.btn-next')!.addEventListener('click', e => {
       e.stopPropagation();
-      currentTrack?.id === track.id ? playNext() : playTrack(track);
+      const current = w.ArchieMusic?.getCurrent();
+      current?.id === track.id ? playNext() : playTrack(track);
     });
 
     const bar = div.querySelector('.btn-progress') as HTMLElement;

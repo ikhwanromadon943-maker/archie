@@ -252,6 +252,8 @@ import Base from '../../layouts/Base.astro';
   .gb-thread {
     display: flex;
     flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.6rem;
   }
 
   /* TikTok-style compact row: avatar, name+text, like on the right */
@@ -259,7 +261,13 @@ import Base from '../../layouts/Base.astro';
     display: flex;
     align-items: flex-start;
     gap: 0.65rem;
-    padding: 0.6rem 0.25rem;
+    padding: 0.75rem 0.85rem;
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px rgba(100,149,237,0.08), inset 0 1px 0 rgba(255,255,255,0.5);
   }
   .gb-entry-avatar {
     width: 34px; height: 34px;
@@ -271,6 +279,11 @@ import Base from '../../layouts/Base.astro';
     font-size: 0.85rem; font-weight: 700;
     flex-shrink: 0;
   }
+  .gb-entry-admin {
+    background: rgba(100,149,237,0.10);
+    border-color: rgba(100,149,237,0.35);
+  }
+
   .gb-entry-body { flex: 1; min-width: 0; }
   .gb-entry-head {
     display: flex;
@@ -349,10 +362,13 @@ import Base from '../../layouts/Base.astro';
   .gb-replies {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
     margin-left: 2.4rem;
+    margin-top: 0.5rem;
     padding-left: 0.75rem;
-    border-left: 2px solid #f1f5f9;
+    border-left: 2px solid rgba(100,149,237,0.15);
   }
+  .gb-entry-reply { padding: 0.6rem 0.75rem; }
   .gb-entry-reply .gb-entry-avatar { width: 26px; height: 26px; min-width: 26px; font-size: 0.7rem; }
   .gb-entry-reply .gb-entry-msg { font-size: 0.82rem; }
 

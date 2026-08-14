@@ -43,6 +43,18 @@ import Base from '../../layouts/Base.astro';
 
   document.addEventListener('astro:page-load', () => {
 
+  // Push the global mini-player up above this page's composer, since the
+  // composer now lives inside the same fixed tab-bar-outer stack (see
+  // Base.astro slot="above-tabbar") and would otherwise overlap it.
+  const composerEl = document.querySelector('.gb-composer') as HTMLElement;
+  function syncComposerHeight() {
+    if (composerEl) {
+      document.documentElement.style.setProperty('--composer-h', composerEl.offsetHeight + 8 + 'px');
+    }
+  }
+  syncComposerHeight();
+  window.addEventListener('resize', syncComposerHeight);
+
   const NAME_KEY  = 'guestbook_name';
   const LIKE_KEY  = 'liked_guestbook_v1';
   // Maps message id -> the secret owner_token returned by post_guestbook_entry
@@ -255,6 +267,7 @@ import Base from '../../layouts/Base.astro';
     max-height: calc(100dvh - 15rem);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 4.5rem; /* clears the mini-player when it's visible above the composer */
   }
   .gb-feed {
     display: flex;

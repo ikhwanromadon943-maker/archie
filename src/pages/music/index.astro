@@ -22,8 +22,6 @@ import Base from '../../layouts/Base.astro';
     <!-- TRACK LIST rendered by JS -->
     <div id="trackList" class="track-list"></div>
 
-    <audio id="audioPlayer"></audio>
-
   </div>
 
 </Base>
@@ -31,99 +29,89 @@ import Base from '../../layouts/Base.astro';
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const audio          = document.getElementById('audioPlayer') as HTMLAudioElement;
-  const searchInput    = document.getElementById('searchInput') as HTMLInputElement;
-  const searchDropdown = document.getElementById('searchDropdown') as HTMLElement;
-  const trackList      = document.getElementById('trackList') as HTMLElement;
+  // The <audio> element and playback controller live globally in Base.astro
+  // (persisted across page navigation) so music never stops just because you
+  // switched pages — this page only talks to it via window.ArchieMusic.
 
-  let allTracks: any[]   = [];
-  let shownTracks: any[] = [];
-  let currentTrack: any  = null;
-  let isPlaying          = false;
+  document.addEventListener('astro:page-load', () => {
+    const w = window as any;
 
-  function fmt(sec: number) {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  }
+    const searchInput    = document.getElementById('searchInput') as HTMLInputElement;
+    const searchDropdown = document.getElementById('searchDropdown') as HTMLElement;
+    const trackList      = document.getElementById('trackList') as HTMLElement;
 
-  function cardOf(id: any): HTMLElement | null {
-    return trackList.querySelector(`.music-player[data-id="${id}"]`);
-  }
+    let allTracks: any[]   = [];
+    let shownTracks: any[] = [];
 
-  function setIcons(card: HTMLElement | null, playing: boolean) {
-    if (!card) return;
-    (card.querySelector('.icon-play')  as HTMLElement).style.display = playing ? 'none' : '';
-    (card.querySelector('.icon-pause') as HTMLElement).style.display = playing ? ''     : 'none';
-  }
+    function fmt(sec: number) {
+      if (!isFinite(sec)) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
 
-  function playTrack(track: any) {
-    if (!track) return;
+    function cardOf(id: any): HTMLElement | null {
+      return trackList.querySelector(`.music-player[data-id="${id}"]`);
+    }
 
-    // reset previous
-    if (currentTrack) {
-      const prev = cardOf(currentTrack.id);
-      if (prev) {
-        prev.classList.remove('is-playing');
-        setIcons(prev, false);
-        (prev.querySelector('.player-progress-fill') as HTMLElement).style.width = '0%';
-        (prev.querySelector('.player-time') as HTMLElement).textContent = '0:00 / 0:00';
-        (prev.querySelector('.player-duration') as HTMLElement).textContent = '';
+    function setIcons(card: HTMLElement | null, playing: boolean) {
+      if (!card) return;
+      (card.querySelector('.icon-play')  as HTMLElement).style.display = playing ? 'none' : '';
+      (card.querySelector('.icon-pause') as HTMLElement).style.display = playing ? ''     : 'none';
+    }
+
+    function playTrack(track: any) {
+      w.ArchieMusic?.playTrack(track);
+      searchDropdown.style.display = 'none';
+      searchInput.value = '';
+    }
+
+    function toggleCurrent() {
+      const current = w.ArchieMusic?.getCurrent();
+      if (!current) { if (shownTracks.length) playTrack(shownTracks[0]); return; }
+      w.ArchieMusic?.toggle();
+    }
+
+    function playNext() {
+      const current = w.ArchieMusic?.getCurrent();
+      if (!allTracks.length) return;
+      const idx = allTracks.findIndex(t => t.id === current?.id);
+      playTrack(allTracks[idx < allTracks.length - 1 ? idx + 1 : 0]);
+    }
+
+    function playPrev() {
+      const current = w.ArchieMusic?.getCurrent();
+      if (!allTracks.length) return;
+      const idx = allTracks.findIndex(t => t.id === current?.id);
+      playTrack(allTracks[idx > 0 ? idx - 1 : allTracks.length - 1]);
+    }
+
+    // Reflect the global player's state onto whichever card matches it —
+    // fires on every timeupdate/play/pause of the shared audio element.
+    function onMusicUpdate(e: Event) {
+      const { track, isPlaying, currentTime, duration } = (e as CustomEvent).detail;
+      trackList.querySelectorAll('.music-player').forEach(c => c.classList.remove('is-playing'));
+      if (!track) return;
+      const card = cardOf(track.id);
+      if (!card) return;
+      card.classList.add('is-playing');
+      setIcons(card, isPlaying);
+      if (duration && !isNaN(duration)) {
+        (card.querySelector('.player-progress-fill') as HTMLElement).style.width = (currentTime / duration * 100) + '%';
+        (card.querySelector('.player-time') as HTMLElement).textContent = fmt(currentTime) + ' / ' + fmt(duration);
+        (card.querySelector('.player-duration') as HTMLElement).textContent = fmt(duration);
       }
     }
 
-    currentTrack = track;
-    const card = cardOf(track.id);
-    if (card) card.classList.add('is-playing');
+    if (w.__archieMusicUpdateHandler) document.removeEventListener('archie:music', w.__archieMusicUpdateHandler);
+    w.__archieMusicUpdateHandler = onMusicUpdate;
+    document.addEventListener('archie:music', onMusicUpdate);
 
-    audio.src = track.url;
-    audio.play()
-      .then(()  => { isPlaying = true;  setIcons(cardOf(track.id), true);  })
-      .catch(() => { isPlaying = false; setIcons(cardOf(track.id), false); });
+    if (w.__archieMusicEndedHandler) document.removeEventListener('archie:music-ended', w.__archieMusicEndedHandler);
+    w.__archieMusicEndedHandler = playNext;
+    document.addEventListener('archie:music-ended', playNext);
 
-    searchDropdown.style.display = 'none';
-    searchInput.value = '';
-  }
-
-  function toggleCurrent() {
-    if (!currentTrack) { if (shownTracks.length) playTrack(shownTracks[0]); return; }
-    audio.paused ? audio.play() : audio.pause();
-  }
-
-  function playNext() {
-    if (!allTracks.length) return;
-    const idx = allTracks.findIndex(t => t.id === currentTrack?.id);
-    playTrack(allTracks[idx < allTracks.length - 1 ? idx + 1 : 0]);
-  }
-
-  function playPrev() {
-    if (!allTracks.length) return;
-    const idx = allTracks.findIndex(t => t.id === currentTrack?.id);
-    playTrack(allTracks[idx > 0 ? idx - 1 : allTracks.length - 1]);
-  }
-
-  audio.addEventListener('timeupdate', () => {
-    if (!currentTrack || !audio.duration || isNaN(audio.duration)) return;
-    const card = cardOf(currentTrack.id);
-    if (!card) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    (card.querySelector('.player-progress-fill') as HTMLElement).style.width = pct + '%';
-    (card.querySelector('.player-time') as HTMLElement).textContent =
-      fmt(audio.currentTime) + ' / ' + fmt(audio.duration);
-  });
-
-  audio.addEventListener('loadedmetadata', () => {
-    if (!currentTrack || !audio.duration || isNaN(audio.duration)) return;
-    const card = cardOf(currentTrack.id);
-    if (!card) return;
-    (card.querySelector('.player-duration') as HTMLElement).textContent = fmt(audio.duration);
-  });
-
-  audio.addEventListener('play',  () => { isPlaying = true;  setIcons(cardOf(currentTrack?.id), true);  });
-  audio.addEventListener('pause', () => { isPlaying = false; setIcons(cardOf(currentTrack?.id), false); });
-  audio.addEventListener('ended', playNext);
-
-  function buildCard(track: any, delay: number): HTMLElement {
+    function buildCard(track: any, delay: number): HTMLElement {
     const hasCover = track.thumbnail &&
       (track.thumbnail.startsWith('http') || track.thumbnail.startsWith('/'));
 
@@ -175,10 +163,11 @@ import Base from '../../layouts/Base.astro';
     const bar = div.querySelector('.btn-progress') as HTMLElement;
     bar.addEventListener('click', e => {
       e.stopPropagation();
-      if (currentTrack?.id !== track.id) return;
-      if (!audio.duration || isNaN(audio.duration)) return;
+      const current = w.ArchieMusic?.getCurrent();
+      const globalAudio = w.ArchieMusic?.audio;
+      if (current?.id !== track.id || !globalAudio?.duration || isNaN(globalAudio.duration)) return;
       const rect = bar.getBoundingClientRect();
-      audio.currentTime = ((e as MouseEvent).clientX - rect.left) / rect.width * audio.duration;
+      globalAudio.currentTime = ((e as MouseEvent).clientX - rect.left) / rect.width * globalAudio.duration;
     });
 
     return div;
@@ -193,11 +182,14 @@ import Base from '../../layouts/Base.astro';
       return;
     }
 
+    const current = w.ArchieMusic?.getCurrent();
+    const playing = current && !w.ArchieMusic?.audio?.paused;
+
     list.forEach((track, i) => {
       const card = buildCard(track, i * 40);
-      if (currentTrack?.id === track.id) {
+      if (current?.id === track.id) {
         card.classList.add('is-playing');
-        setIcons(card, isPlaying);
+        setIcons(card, !!playing);
       }
       trackList.appendChild(card);
     });
@@ -237,10 +229,14 @@ import Base from '../../layouts/Base.astro';
     renderList(hits);
   });
 
-  document.addEventListener('click', e => {
+  // Named + de-duped so revisiting /music via soft navigation doesn't stack
+  // up extra document-level listeners each time this callback re-runs.
+  if (w.__archieMusicOutsideClick) document.removeEventListener('click', w.__archieMusicOutsideClick);
+  w.__archieMusicOutsideClick = (e: MouseEvent) => {
     if (!(e.target as HTMLElement).closest('.music-search-wrap'))
       searchDropdown.style.display = 'none';
-  });
+  };
+  document.addEventListener('click', w.__archieMusicOutsideClick);
 
   (async () => {
     // show skeletons while loading
@@ -262,6 +258,7 @@ import Base from '../../layouts/Base.astro';
       trackList.innerHTML = '<p class="no-tracks">No tracks. Add some in the admin panel.</p>';
     }
   })();
+  });
 </script>
 
 <!-- is:global WAJIB karena class di-inject via JS, Astro scoped CSS tidak akan apply -->
@@ -275,13 +272,15 @@ import Base from '../../layouts/Base.astro';
 
   .music-title {
     text-align: center;
-    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    font-style: italic;
+    font-size: clamp(2.4rem, 12vw, 4.2rem);
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
     color: #1e293b;
     margin-bottom: 1.5rem;
   }
-  .music-dot { color: #6495ED; }
+  .music-dot { color: #6495ED; font-style: normal; }
 
   /* SEARCH */
   .music-search-wrap {

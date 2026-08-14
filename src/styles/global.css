@@ -79,7 +79,7 @@ body::before {
    whenever a track is loaded, so playback started on /music can be seen and
    controlled (paused/stopped) no matter where you navigate to. */
 .mini-player {
-  position:fixed; left:1rem; right:1rem; bottom:calc(var(--tab-h) + 8px); z-index:190;
+  position:fixed; left:1rem; right:1rem; bottom:calc(var(--tab-h) + 8px + var(--composer-h, 0px)); z-index:190;
   display:flex; align-items:center; gap:10px;
   max-width:480px; margin:0 auto;
   background:rgba(255,255,255,0.92); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);

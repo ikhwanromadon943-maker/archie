@@ -43,16 +43,21 @@ create table if not exists music (
   duration    text,
   url         text,
   thumbnail   text,
+  lyrics      text,
   added_at    timestamptz not null default now()
 );
 
--- VAULT (private notes)
-create table if not exists vault (
+-- GUESTBOOK (public messages, threaded replies, admin moderation)
+create table if not exists guestbook (
   id          uuid primary key default gen_random_uuid(),
-  title       text not null,
-  content     text not null,
+  name        text not null,
+  message     text not null,
+  parent_id   uuid references guestbook(id) on delete cascade,
+  is_admin    boolean not null default false,
+  likes       integer not null default 0,
   created_at  timestamptz not null default now()
 );
+create index if not exists guestbook_parent_idx on guestbook(parent_id);
 
 -- SETTINGS (passphrase hash, dll)
 create table if not exists settings (
@@ -67,33 +72,31 @@ values ('admin_pass', 'mysite2025')
 on conflict (key) do nothing;
 
 -- ── Row Level Security ────────────────────────────
--- Notes, gallery, snippets, music: publik bisa baca
--- Vault: tidak bisa dibaca publik via RLS (query dari client pakai passphrase check)
+-- Notes, gallery, snippets, music, guestbook: publik bisa baca & tulis
+-- (admin auth & moderation dilakukan di app level, bukan RLS)
 
-alter table notes    enable row level security;
-alter table gallery  enable row level security;
-alter table snippets enable row level security;
-alter table music    enable row level security;
-alter table vault    enable row level security;
-alter table settings enable row level security;
+alter table notes     enable row level security;
+alter table gallery   enable row level security;
+alter table snippets  enable row level security;
+alter table music     enable row level security;
+alter table guestbook enable row level security;
+alter table settings  enable row level security;
 
--- PUBLIC READ untuk notes, gallery, snippets, music
-create policy "public read notes"    on notes    for select using (true);
-create policy "public read gallery"  on gallery  for select using (true);
-create policy "public read snippets" on snippets for select using (true);
-create policy "public read music"    on music    for select using (true);
+-- PUBLIC READ untuk notes, gallery, snippets, music, guestbook
+create policy "public read notes"     on notes     for select using (true);
+create policy "public read gallery"   on gallery   for select using (true);
+create policy "public read snippets"  on snippets  for select using (true);
+create policy "public read music"     on music     for select using (true);
+create policy "public read guestbook" on guestbook for select using (true);
+create policy "anon read settings"    on settings  for select using (true);
 
 -- ANON WRITE untuk semua (admin auth handled di app level)
-create policy "anon write notes"    on notes    for all using (true) with check (true);
-create policy "anon write gallery"  on gallery  for all using (true) with check (true);
-create policy "anon write snippets" on snippets for all using (true) with check (true);
-create policy "anon write music"    on music    for all using (true) with check (true);
-create policy "anon write vault"    on vault    for all using (true) with check (true);
-create policy "anon write settings" on settings for all using (true) with check (true);
-
--- Vault read: semua bisa (auth check dilakukan di frontend via passphrase)
-create policy "anon read vault"     on vault    for select using (true);
-create policy "anon read settings"  on settings for select using (true);
+create policy "anon write notes"     on notes     for all using (true) with check (true);
+create policy "anon write gallery"   on gallery   for all using (true) with check (true);
+create policy "anon write snippets"  on snippets  for all using (true) with check (true);
+create policy "anon write music"     on music     for all using (true) with check (true);
+create policy "anon write guestbook" on guestbook for all using (true) with check (true);
+create policy "anon write settings"  on settings  for all using (true) with check (true);
 
 -- ── Increment functions ────────────────────────────
 

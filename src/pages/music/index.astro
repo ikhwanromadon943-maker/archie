@@ -19,6 +19,23 @@ import Base from '../../layouts/Base.astro';
       <div id="searchDropdown" class="music-search-dropdown" style="display:none"></div>
     </div>
 
+    <!-- PLAYBACK MODE TOOLBAR -->
+    <div class="music-toolbar">
+      <button class="mode-btn" id="shuffleBtn" aria-label="Shuffle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        <span>Shuffle</span>
+      </button>
+      <button class="mode-btn" id="repeatBtn" aria-label="Repeat" data-mode="off">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span id="repeatLabel">Repeat</span>
+      </button>
+    </div>
+
+    <!-- LYRICS (shows when current track has lyrics) -->
+    <div id="lyricsPanel" class="lyrics-panel" style="display:none">
+      <div class="lyrics-scroll" id="lyricsScroll"></div>
+    </div>
+
     <!-- TRACK LIST rendered by JS -->
     <div id="trackList" class="track-list"></div>
 
@@ -39,9 +56,74 @@ import Base from '../../layouts/Base.astro';
     const searchInput    = document.getElementById('searchInput') as HTMLInputElement;
     const searchDropdown = document.getElementById('searchDropdown') as HTMLElement;
     const trackList      = document.getElementById('trackList') as HTMLElement;
+    const shuffleBtn     = document.getElementById('shuffleBtn') as HTMLElement;
+    const repeatBtn      = document.getElementById('repeatBtn') as HTMLElement;
+    const repeatLabel    = document.getElementById('repeatLabel') as HTMLElement;
+    const lyricsPanel    = document.getElementById('lyricsPanel') as HTMLElement;
+    const lyricsScroll   = document.getElementById('lyricsScroll') as HTMLElement;
 
     let allTracks: any[]   = [];
     let shownTracks: any[] = [];
+
+    // ── LYRICS (LRC-style "[mm:ss.xx] line" per line, plain text falls back to no-sync) ──
+    let parsedLyrics: { time: number; text: string }[] | null = null;
+    let lyricsIsSynced = false;
+    let lastLyricsTrackId: any = null;
+    let activeLyricLine = -1;
+
+    function parseLyrics(raw: string): { time: number; text: string }[] {
+      const lines = raw.split('\n');
+      const tagRe = /^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]\s*(.*)$/;
+      const out: { time: number; text: string }[] = [];
+      let anySynced = false;
+      lines.forEach(line => {
+        const m = line.match(tagRe);
+        if (m) {
+          anySynced = true;
+          const min = parseInt(m[1], 10);
+          const sec = parseInt(m[2], 10);
+          const ms  = m[3] ? parseInt(m[3].padEnd(3, '0'), 10) : 0;
+          out.push({ time: min * 60 + sec + ms / 1000, text: m[4] });
+        } else if (line.trim()) {
+          out.push({ time: -1, text: line.trim() });
+        }
+      });
+      lyricsIsSynced = anySynced;
+      return out;
+    }
+
+    function renderLyrics(track: any) {
+      if (!track?.lyrics || !String(track.lyrics).trim()) {
+        lyricsPanel.style.display = 'none';
+        parsedLyrics = null;
+        lastLyricsTrackId = null;
+        return;
+      }
+      parsedLyrics = parseLyrics(String(track.lyrics));
+      lastLyricsTrackId = track.id;
+      activeLyricLine = -1;
+      lyricsPanel.style.display = '';
+      lyricsScroll.innerHTML = parsedLyrics.map((l, i) =>
+        `<p class="lyrics-line${lyricsIsSynced ? '' : ' lyrics-plain'}" data-i="${i}">${l.text || '&nbsp;'}</p>`
+      ).join('');
+    }
+
+    function updateLyricsSync(currentTime: number) {
+      if (!parsedLyrics || !lyricsIsSynced) return;
+      let idx = -1;
+      for (let i = 0; i < parsedLyrics.length; i++) {
+        if (parsedLyrics[i].time <= currentTime) idx = i; else break;
+      }
+      if (idx === activeLyricLine) return;
+      activeLyricLine = idx;
+      const lines = lyricsScroll.querySelectorAll('.lyrics-line');
+      lines.forEach(l => l.classList.remove('active'));
+      if (idx >= 0) {
+        const el = lines[idx] as HTMLElement;
+        el?.classList.add('active');
+        el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }
 
     function fmt(sec: number) {
       if (!isFinite(sec)) return '0:00';
@@ -72,16 +154,28 @@ import Base from '../../layouts/Base.astro';
       w.ArchieMusic?.toggle();
     }
 
+    function randomTrackExcluding(excludeId: any) {
+      if (allTracks.length <= 1) return allTracks[0];
+      let pick;
+      do { pick = allTracks[Math.floor(Math.random() * allTracks.length)]; }
+      while (pick.id === excludeId);
+      return pick;
+    }
+
     function playNext() {
       const current = w.ArchieMusic?.getCurrent();
       if (!allTracks.length) return;
+      if (w.ArchieMusic?.getShuffle?.()) { playTrack(randomTrackExcluding(current?.id)); return; }
       const idx = allTracks.findIndex(t => t.id === current?.id);
-      playTrack(allTracks[idx < allTracks.length - 1 ? idx + 1 : 0]);
+      const atEnd = idx >= allTracks.length - 1;
+      if (atEnd && w.ArchieMusic?.getRepeat?.() !== 'all') return; // stop at end unless repeat-all
+      playTrack(allTracks[atEnd ? 0 : idx + 1]);
     }
 
     function playPrev() {
       const current = w.ArchieMusic?.getCurrent();
       if (!allTracks.length) return;
+      if (w.ArchieMusic?.getShuffle?.()) { playTrack(randomTrackExcluding(current?.id)); return; }
       const idx = allTracks.findIndex(t => t.id === current?.id);
       playTrack(allTracks[idx > 0 ? idx - 1 : allTracks.length - 1]);
     }
@@ -89,9 +183,21 @@ import Base from '../../layouts/Base.astro';
     // Reflect the global player's state onto whichever card matches it —
     // fires on every timeupdate/play/pause of the shared audio element.
     function onMusicUpdate(e: Event) {
-      const { track, isPlaying, currentTime, duration } = (e as CustomEvent).detail;
+      const { track, isPlaying, currentTime, duration, shuffle, repeatMode } = (e as CustomEvent).detail;
+
+      shuffleBtn.classList.toggle('mode-active', !!shuffle);
+      if (repeatMode) {
+        repeatBtn.dataset.mode = repeatMode;
+        repeatBtn.classList.toggle('mode-active', repeatMode !== 'off');
+        repeatLabel.textContent = repeatMode === 'one' ? 'Repeat One' : repeatMode === 'all' ? 'Repeat All' : 'Repeat';
+      }
+
       trackList.querySelectorAll('.music-player').forEach(c => c.classList.remove('is-playing'));
-      if (!track) return;
+      if (!track) { lyricsPanel.style.display = 'none'; parsedLyrics = null; lastLyricsTrackId = null; return; }
+
+      if (track.id !== lastLyricsTrackId) renderLyrics(track);
+      if (duration && !isNaN(duration)) updateLyricsSync(currentTime);
+
       const card = cardOf(track.id);
       if (!card) return;
       card.classList.add('is-playing');
@@ -110,6 +216,23 @@ import Base from '../../layouts/Base.astro';
     if (w.__archieMusicEndedHandler) document.removeEventListener('archie:music-ended', w.__archieMusicEndedHandler);
     w.__archieMusicEndedHandler = playNext;
     document.addEventListener('archie:music-ended', playNext);
+
+    shuffleBtn.addEventListener('click', () => {
+      w.ArchieMusic?.setShuffle?.(!w.ArchieMusic?.getShuffle?.());
+    });
+    repeatBtn.addEventListener('click', () => {
+      const order = ['off', 'all', 'one'] as const;
+      const cur = w.ArchieMusic?.getRepeat?.() || 'off';
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      w.ArchieMusic?.setRepeat?.(next);
+    });
+
+    // Reflect persisted shuffle/repeat state immediately on page load (before first broadcast)
+    shuffleBtn.classList.toggle('mode-active', !!w.ArchieMusic?.getShuffle?.());
+    const initRepeat = w.ArchieMusic?.getRepeat?.() || 'off';
+    repeatBtn.dataset.mode = initRepeat;
+    repeatBtn.classList.toggle('mode-active', initRepeat !== 'off');
+    repeatLabel.textContent = initRepeat === 'one' ? 'Repeat One' : initRepeat === 'all' ? 'Repeat All' : 'Repeat';
 
     function buildCard(track: any, delay: number): HTMLElement {
     const hasCover = track.thumbnail &&
@@ -512,4 +635,62 @@ import Base from '../../layouts/Base.astro';
     font-size: 0.875rem;
     padding: 2rem 0;
   }
+
+  /* TOOLBAR — shuffle / repeat */
+  .music-toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+  .mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 50px;
+    padding: 7px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .mode-btn:hover { border-color: #cbd5e1; }
+  .mode-btn.mode-active {
+    border-color: #6495ED;
+    color: #6495ED;
+    background: rgba(100,149,237,0.08);
+  }
+
+  /* LYRICS */
+  .lyrics-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 1rem 0;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  }
+  .lyrics-scroll {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 0 1.25rem;
+    scroll-behavior: smooth;
+  }
+  .lyrics-line {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    line-height: 1.9;
+    text-align: center;
+    transition: color 0.2s, font-weight 0.2s;
+    margin: 0;
+  }
+  .lyrics-line.active {
+    color: #6495ED;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .lyrics-line.lyrics-plain { color: #64748b; }
 </style>

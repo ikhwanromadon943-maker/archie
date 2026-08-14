@@ -1,0 +1,396 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="Guestbook" description="Leave a message. Say hello.">
+
+  <header class="notes-hdr">
+    <h1>Guestbook</h1>
+    <p>Leave a message, a memory, or just say hello. Everyone can read and reply.</p>
+  </header>
+
+  <div class="gb-form">
+    <input type="text" id="gb-name" class="form-input gb-name-input" placeholder="Your name" maxlength="60" autocomplete="off"/>
+    <textarea id="gb-message" class="form-textarea gb-msg-input" placeholder="Write something..." rows="3" maxlength="500"></textarea>
+    <div class="gb-form-row">
+      <span class="gb-error" id="gb-error"></span>
+      <button class="btn btn-primary" id="gb-submit">Post</button>
+    </div>
+  </div>
+
+  <div class="loading-state" id="loading"><span class="loader"></span></div>
+
+  <div class="gb-feed" id="gb-feed"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none">
+    <div class="empty-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+    </div>
+    <h3>No messages yet.</h3>
+    <p>Be the first to sign the guestbook.</p>
+  </div>
+
+</Base>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+
+  document.addEventListener('astro:page-load', () => {
+
+  const NAME_KEY  = 'guestbook_name';
+  const LIKE_KEY  = 'liked_guestbook_v1';
+  const OWNED_KEY = 'guestbook_owned_v1'; // ids of messages this browser posted (can be edited/deleted by owner is out of scope — used only for subtle "you" tag)
+
+  const getLiked = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem(LIKE_KEY) || '[]')); }
+    catch { return new Set(); }
+  };
+  const saveLiked = (s: Set<string>) => localStorage.setItem(LIKE_KEY, JSON.stringify([...s]));
+
+  const getOwned = (): Set<string> => {
+    try { return new Set(JSON.parse(localStorage.getItem(OWNED_KEY) || '[]')); }
+    catch { return new Set(); }
+  };
+  const addOwned = (id: string) => {
+    const s = getOwned(); s.add(id);
+    localStorage.setItem(OWNED_KEY, JSON.stringify([...s]));
+  };
+
+  const fdate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const esc = (s: string) => (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c] as string));
+
+  const nameInput = document.getElementById('gb-name') as HTMLInputElement;
+  const msgInput  = document.getElementById('gb-message') as HTMLTextAreaElement;
+  const errorEl   = document.getElementById('gb-error') as HTMLElement;
+  const submitBtn = document.getElementById('gb-submit') as HTMLButtonElement;
+  const feed      = document.getElementById('gb-feed') as HTMLElement;
+  const loading   = document.getElementById('loading') as HTMLElement;
+  const empty     = document.getElementById('empty-state') as HTMLElement;
+
+  const savedName = localStorage.getItem(NAME_KEY);
+  if (savedName) nameInput.value = savedName;
+
+  let allEntries: any[] = [];
+
+  function buildReplyForm(parentId: string, onPosted: () => void): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'gb-reply-form';
+    wrap.innerHTML = `
+      <textarea class="form-textarea gb-reply-input" placeholder="Write a reply..." rows="2" maxlength="500"></textarea>
+      <div class="gb-form-row">
+        <span class="gb-error"></span>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-ghost gb-reply-cancel" style="font-size:0.75rem;padding:0.35rem 0.8rem">Cancel</button>
+          <button class="btn btn-primary gb-reply-send" style="font-size:0.75rem;padding:0.35rem 0.8rem">Reply</button>
+        </div>
+      </div>`;
+
+    wrap.querySelector('.gb-reply-cancel')!.addEventListener('click', () => wrap.remove());
+
+    wrap.querySelector('.gb-reply-send')!.addEventListener('click', async () => {
+      const ta = wrap.querySelector('.gb-reply-input') as HTMLTextAreaElement;
+      const errEl = wrap.querySelector('.gb-error') as HTMLElement;
+      const text = ta.value.trim();
+      if (!text) { errEl.textContent = 'Write something first.'; return; }
+
+      const isAdmin = sessionStorage.getItem('admin_authed') === '1';
+      const name = isAdmin ? 'Archie' : (nameInput.value.trim() || 'Anonymous');
+      if (!isAdmin) localStorage.setItem(NAME_KEY, name);
+
+      const btn = wrap.querySelector('.gb-reply-send') as HTMLButtonElement;
+      btn.disabled = true;
+      const { error } = await supabase.from('guestbook').insert({
+        name, message: text, parent_id: parentId, is_admin: isAdmin
+      }).select().single();
+      btn.disabled = false;
+
+      if (error) { errEl.textContent = error.message; return; }
+      wrap.remove();
+      onPosted();
+    });
+
+    return wrap;
+  }
+
+  function buildEntry(entry: any, isReply: boolean): HTMLElement {
+    const liked = getLiked();
+    const owned = getOwned();
+    const isLiked = liked.has(entry.id);
+    const hFill = isLiked ? '#ef4444' : 'none';
+    const hStroke = isLiked ? '#ef4444' : 'currentColor';
+
+    const el = document.createElement('div');
+    el.className = 'gb-entry' + (isReply ? ' gb-entry-reply' : '') + (entry.is_admin ? ' gb-entry-admin' : '');
+
+    el.innerHTML = `
+      <div class="gb-entry-head">
+        <span class="gb-entry-name">${esc(entry.name)}${entry.is_admin ? '<span class="gb-admin-badge">Archie</span>' : ''}${owned.has(entry.id) ? '<span class="gb-you-badge">you</span>' : ''}</span>
+        <span class="gb-entry-date">${fdate(entry.created_at)}</span>
+      </div>
+      <p class="gb-entry-msg">${esc(entry.message).replace(/\n/g,'<br>')}</p>
+      <div class="gb-entry-actions">
+        <button class="gb-like-btn${isLiked ? ' liked' : ''}" data-id="${entry.id}" data-liked="${isLiked}" aria-label="Like">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="${hFill}" stroke="${hStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span class="lc">${entry.likes ?? 0}</span>
+        </button>
+        ${!isReply ? '<button class="gb-reply-btn">Reply</button>' : ''}
+        <button class="gb-admin-delete" style="display:none">Delete</button>
+      </div>
+      <div class="gb-reply-slot"></div>
+    `;
+
+    el.querySelector<HTMLButtonElement>('.gb-like-btn')!.addEventListener('click', async function () {
+      const id = this.dataset.id!;
+      const wasLiked = this.dataset.liked === 'true';
+      const likedSet = getLiked();
+      const lc = this.querySelector('.lc')!;
+      const svg = this.querySelector('svg')!;
+      const cur = parseInt(lc.textContent || '0');
+
+      if (wasLiked) {
+        likedSet.delete(id); this.dataset.liked = 'false'; this.classList.remove('liked');
+        svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+        lc.textContent = String(Math.max(0, cur - 1));
+        await supabase.rpc('decrement_likes', { table_name: 'guestbook', row_id: id });
+      } else {
+        likedSet.add(id); this.dataset.liked = 'true'; this.classList.add('liked');
+        svg.setAttribute('fill', '#ef4444'); svg.setAttribute('stroke', '#ef4444');
+        lc.textContent = String(cur + 1);
+        await supabase.rpc('increment_likes', { table_name: 'guestbook', row_id: id });
+      }
+      saveLiked(likedSet);
+    });
+
+    if (!isReply) {
+      el.querySelector('.gb-reply-btn')!.addEventListener('click', () => {
+        const slot = el.querySelector('.gb-reply-slot') as HTMLElement;
+        if (slot.querySelector('.gb-reply-form')) { slot.innerHTML = ''; return; }
+        slot.innerHTML = '';
+        slot.appendChild(buildReplyForm(entry.id, () => render()));
+      });
+    }
+
+    // Admin controls (moderation) — only shown if logged in as admin this session
+    if (sessionStorage.getItem('admin_authed') === '1') {
+      const delBtn = el.querySelector('.gb-admin-delete') as HTMLElement;
+      delBtn.style.display = '';
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('Delete this message?')) return;
+        await supabase.from('guestbook').delete().eq('id', entry.id);
+        render();
+      });
+    }
+
+    return el;
+  }
+
+  async function render() {
+    const { data, error } = await supabase
+      .from('guestbook').select('*').order('created_at', { ascending: false });
+
+    loading.style.display = 'none';
+    if (error) { feed.innerHTML = `<p class="err-msg">[error] ${error.message}</p>`; return; }
+
+    allEntries = data || [];
+    feed.innerHTML = '';
+
+    const roots = allEntries.filter(e => !e.parent_id);
+    if (!roots.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    roots.forEach((root, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'gb-thread';
+      wrap.style.cssText = `opacity:0;animation:fadeUp 0.4s ease ${i * 0.06}s forwards`;
+      wrap.appendChild(buildEntry(root, false));
+
+      const replies = allEntries.filter(e => e.parent_id === root.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      if (replies.length) {
+        const repliesWrap = document.createElement('div');
+        repliesWrap.className = 'gb-replies';
+        replies.forEach(r => repliesWrap.appendChild(buildEntry(r, true)));
+        wrap.appendChild(repliesWrap);
+      }
+
+      feed.appendChild(wrap);
+    });
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim() || 'Anonymous';
+    const message = msgInput.value.trim();
+    errorEl.textContent = '';
+
+    if (!message) { errorEl.textContent = 'Write a message first.'; return; }
+
+    localStorage.setItem(NAME_KEY, name);
+    submitBtn.disabled = true;
+
+    const isAdmin = sessionStorage.getItem('admin_authed') === '1';
+    const { data, error } = await supabase.from('guestbook')
+      .insert({ name: isAdmin ? 'Archie' : name, message, is_admin: isAdmin })
+      .select().single();
+
+    submitBtn.disabled = false;
+    if (error) { errorEl.textContent = error.message; return; }
+
+    if (data?.id) addOwned(data.id);
+    msgInput.value = '';
+    render();
+  });
+
+  render();
+  });
+</script>
+
+<style>
+  .gb-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+  .gb-name-input { max-width: 260px; }
+  .gb-form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .gb-error {
+    font-size: 0.75rem;
+    color: var(--red);
+    flex: 1;
+  }
+
+  .gb-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .gb-thread {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .gb-entry {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1rem 1.15rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .gb-entry-admin {
+    border-color: rgba(100,149,237,0.4);
+    background: rgba(100,149,237,0.04);
+  }
+  .gb-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .gb-entry-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .gb-admin-badge {
+    font-size: 0.6rem;
+    background: #6495ED;
+    color: #fff;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .gb-you-badge {
+    font-size: 0.6rem;
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .gb-entry-date {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .gb-entry-msg {
+    font-size: 0.9rem;
+    color: #334155;
+    line-height: 1.6;
+    margin-bottom: 0.6rem;
+    word-break: break-word;
+  }
+  .gb-entry-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .gb-like-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    font-family: monospace;
+    padding: 0;
+  }
+  .gb-like-btn.liked { color: #ef4444; }
+  .gb-reply-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6495ED;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0;
+  }
+  .gb-admin-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ef4444;
+    font-size: 0.72rem;
+    padding: 0;
+    margin-left: auto;
+  }
+
+  .gb-replies {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+    margin-left: 1.25rem;
+    padding-left: 0.9rem;
+    border-left: 2px solid #e2e8f0;
+  }
+  .gb-entry-reply { padding: 0.8rem 1rem; }
+
+  .gb-reply-slot:empty { display: none; }
+  .gb-reply-form {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .gb-reply-input, .gb-msg-input {
+    resize: vertical;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
